@@ -6,7 +6,7 @@
 <title>Jill's Solution &amp; Closing — Role-play</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* Do-section design tokens — see the SALESDOSTYLEGUIDE repo. Components read
      these and never a raw hex, so a future reskin touches this block only. */
@@ -189,6 +189,27 @@
   .fs-btn:hover{background:#EDF3F8}
   .fs-btn:focus-visible{outline:3px solid #A9C7E8;outline-offset:2px}
   .fs-btn.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  /* language switcher — top-right of the header, beside the fullscreen button.
+     ?lang= stays the primary mechanism for LMS embeds. */
+  .langbar{position:absolute;top:12px;inset-inline-end:150px}
+  .langbar select{font:inherit;font-size:.72rem;font-weight:700;color:var(--navy);
+    background:transparent;border:1.5px solid var(--line);border-radius:10px;
+    padding:5px 8px;cursor:pointer}
+  .langbar select:focus-visible{outline:3px solid #A9C7E8;outline-offset:2px}
+
+  /* ---------- right-to-left (Arabic) ----------
+     Reading-order chrome flips on its own: the rail and the header use flex,
+     and padding/margins here are logical properties. What does NOT flip is
+     anything anchored to the photograph — Jill faces us on the left and You
+     has her back to us on the right, so the bubbles and their tails stay with
+     the people they belong to. */
+  [dir="rtl"] body{font-family:'Noto Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif}
+  [dir="rtl"] .title,[dir="rtl"] .final h2,[dir="rtl"] .code-box .code{
+    font-family:'Noto Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;font-weight:700}
+  [dir="rtl"] .title{padding-inline-end:0;padding-inline-start:0}
+  [dir="rtl"] .eyebrow{letter-spacing:0}
+  [dir="rtl"] .langbar{inset-inline-end:150px}
 </style>
 </head>
 <body>
@@ -197,6 +218,7 @@
     <p class="eyebrow" id="eyebrow"></p>
     <h1 class="title" id="title"></h1>
     <button class="fs-btn" id="fsBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span class="fs-label" aria-live="polite"></span></button>
+    <div class="langbar"><select id="langsel" aria-label="Language"></select></div>
     <div class="rail" id="rail" aria-label="Conversation phases"></div>
     <div class="warmth" id="warmthWrap">
       <div class="warmth-avatar" id="warmthAvatar">J</div>
@@ -218,167 +240,819 @@
 </div>
 
 <script>
-/* ===== UI (translate) ===== */
-const UI = {
-  /* Fullscreen button. All four strings are shown to learners: hint and newtab
-     are the fallbacks for when the embed does not permit fullscreen. */
+/* =========================================================================
+   I18N — every language lives in this one file.
+
+   Structure is declared ONCE in SHAPE: which phase each step belongs to, who
+   speaks, the audio ids, which option is correct and what each option does to
+   the warmth score. Only text is per-language, in steps[]:
+     lines[]  — what is said before the choice
+     situation / prompt / tag
+     opts[]   — the three choice buttons
+     fbs[]    — the feedback for each, in the same order
+     say      — only where the spoken line differs from the button label
+   Six copies of the full object tree would invite structural drift -- a
+   correct answer in the wrong slot in one language only -- so the scoring
+   lives in SHAPE and the translator edits flat text.
+
+   Language comes from ?lang=xx, then the browser, then English. For an LMS
+   embed use one localized embed per course language:
+       .../jills_solution_and_closing.html?lang=es
+   ========================================================================= */
+
+const SHAPE = [
+  {phase:0, lines:[{who:"jill",audio:"j0"}],                    correct:0, warmth:[ 8,-6,-4]},
+  {phase:1, lines:[{who:"jill",audio:"j1"}],                    correct:0, warmth:[ 8,-5,-4]},
+  {phase:2, lines:[{who:"you",audio:"y2"},{who:"jill",audio:"j2"}], correct:0, warmth:[ 9,-6,-4], say:0},
+  {phase:3, lines:[{who:"jill",audio:"j3"}],                    correct:0, warmth:[ 8,-5,-6]},
+  {phase:4, lines:[{who:"jill",audio:"j4"}],                    correct:0, warmth:[ 8,-6,-3]},
+  {phase:5, lines:[{who:"jill",audio:"j5"}],                    correct:0, warmth:[ 7,-6,-7], stepTag:"Three Magic Steps · Step 1"},
+  {phase:5, lines:[{who:"jill",audio:"j6"}],                    correct:0, warmth:[ 8,-6,-5], stepTag:"Three Magic Steps · Step 2"},
+  {phase:5, lines:[{who:"jill",audio:"j7"}],                    correct:0, warmth:[ 9,-6,-5], stepTag:"Three Magic Steps · Step 3"},
+  {phase:6, lines:[{who:"jill",audio:"j8"}],                    correct:0, warmth:[ 9,-6,-4]}
+];
+
+const I18N = {
+
+/* ---------------------------------------------------------------- English */
+en:{
+  lang:"en",
   fs:{ enter:"Fullscreen", exit:"Exit fullscreen", newtab:"Open in a new tab", hint:"Press F11 to fill your screen" },
-  /* chrome added by the style-guide conformance pass; the values come from
-     the markup this activity used before it became a stage. */
   eyebrow:"Solution, Closing & Objections · Practice",
   title:"Jill's appointment — you are the Consultant",
   intro:"You finished the Needs Analysis. Now show Jill the right course. Then ask her to start. If she has a doubt, treat it. You choose what to say at each step.",
   persona:"<b>Jill · College student · 23</b><br><b>Her goal:</b> to study at a top university in the United States<br><b>Her level now:</b> 6. She wants to speak and write with confidence.<br><b>Her time:</b> she can study 2 or 3 times a week<br><b>Her hot button:</b> she failed two exams. She feels upset and has lost hope.<br><b>Her options:</b> Full-Access. A: 9 months. B: 12 months.<br><b>Note:</b> she lives far from the Center. She comes into the city often.",
-  setupHeading:"Before you start",
-  startBtn:"Start the appointment ▸",
+  setupHeading:"Before you start", startBtn:"Start the appointment ▸",
   sceneNote:"Your turn. Talk to Jill and close the sale.",
-  warmthName:"Trust & warmth",
-  rethinkTag:"Let's rethink that",
-  tryAgain:"Try another response",
-  finishBtn:"See your results ▸",
-  restartBtn:"Try again",
+  warmthName:"Trust & warmth", you:"You", jill:"Jill",
+  correctTag:"✓ Good move", rethinkTag:"Let's rethink that",
+  continue:"Continue", tryAgain:"Try another response",
+  finishBtn:"See your results ▸", restartBtn:"Try again",
   recapTitle:"What you just practiced",
   finalBadge:"★", finalTitle:"Appointment complete",
   codeLabel:"Completion code", code:"SOLUTION-4080",
-  lang:"en",
-  you:"You", jill:"Jill", situation:"Situation", continue:"Continue", correctTag:"✓ Good move", hearIt:"🔊",
   endGood:"You gave Jill two clear options. You stayed calm when you presented the price. You used the guarantee. You found her real doubt and treated it with the Three Magic Steps. This is how you close more sales.",
   steps:["Say it back","Give a choice","Present the price","The guarantee","Ask to start","Treat the objection","Buying signal"],
   recap:[
-    "Partial close: Talk about what you both agree on, and get a \u201cyes\u201d.",
+    "Partial close: Talk about what you both agree on, and get a “yes”.",
     "Always give two options: one reaches the goal, one is a good start.",
-    "Present the price calmly. Use the word \u201cinvestment\u201d. Then stay quiet.",
+    "Present the price calmly. Use the word “investment”. Then stay quiet.",
     "Use the guarantee to show there is no risk.",
     "Ask a question with two choices, not a yes or no question.",
-    "Three Magic Steps: Accept &amp; Respect \u2192 Question &amp; Understand \u2192 Treat.",
+    "Three Magic Steps: Accept &amp; Respect → Question &amp; Understand → Treat.",
     "A buying signal is not an objection. Help Jill choose, then ask her to start."
-  ]
-};
-
-/* ===== SCENARIO (translate text + audio hooks) ===== */
-const SCENARIO = [
-  { phase:0,
-    lines:[{who:"jill",audio:"j0",text:"So yes, that's pretty much my situation. I failed those two exams because of my level of English, but I would still really love to study in the United States next year. I am applying again next year."}],
+  ],
+  steps_text:[
+   {lines:["So yes, that's pretty much my situation. I failed those two exams because of my level of English, but I would still really love to study in the United States next year. I am applying again next year."],
     situation:"You know all about Jill now. Do one thing before you show her a course.",
     prompt:"What do you say first?",
-    tag:"Partial close: Talk about what you both agree on. Then get one more \u201cyes\u201d before you go on.",
-    options:[
-      {correct:true,warmth:+8,text:"\u201cSo the most important thing for you is confident English for those applications, and studying two or three times a week works well for you. Is that right?\u201d",
-       fb:"Good. You said her goal back to her. You asked for a small \u201cyes\u201d. This is a partial close. It makes the last step much easier."},
-      {correct:false,warmth:-6,text:"\u201cGreat. Let me show you our prices. Then you can see what fits your budget.\u201d",
-       fb:"Too fast. You went straight to the price. First say back what you agreed. Then show the value. The price comes last."},
-      {correct:false,warmth:-4,text:"\u201cNow I will explain all the different courses we have at Wall Street English.\u201d",
-       fb:"This is about the courses, not about Jill. Talk about her goal first. Then the course feels like it's made for her."}
-    ]},
-  { phase:1,
-    lines:[{who:"jill",audio:"j1",text:"Yes, exactly! I just want to feel confident before I send off my applications."}],
+    tag:"Partial close: Talk about what you both agree on. Then get one more “yes” before you go on.",
+    opts:["“So the most important thing for you is confident English for those applications, and studying two or three times a week works well for you. Is that right?”",
+          "“Great. Let me show you our prices. Then you can see what fits your budget.”",
+          "“Now I will explain all the different courses we have at Wall Street English.”"],
+    fbs:["Good. You said her goal back to her. You asked for a small “yes”. This is a partial close. It makes the last step much easier.",
+         "Too fast. You went straight to the price. First say back what you agreed. Then show the value. The price comes last.",
+         "This is about the courses, not about Jill. Talk about her goal first. Then the course feels like it's made for her."]},
+   {lines:["Yes, exactly! I just want to feel confident before I send off my applications."],
     situation:"Jill is at Level 6. Her goal is much higher. You have a 9-month option and a 12-month option.",
     prompt:"How do you show her the course?",
     tag:"Always give two options. One reaches her goal. One is a good start. Now Jill can choose.",
-    options:[
-      {correct:true,warmth:+8,text:"\u201cI have two good options for you. The 12-month course takes you all the way to your goal. The 9-month course is a strong start that you can build on. Both give you plenty of speaking practice and our full support.\u201d",
-       fb:"Well done. Two options let Jill choose. And both options lead to starting today."},
-      {correct:false,warmth:-5,text:"\u201cThe 12-month Full-Access course is the only one that will work for your goal, so let's go with that.\u201d",
-       fb:"One option feels like pressure. Give two options. Then Jill feels that she is choosing."},
-      {correct:false,warmth:-4,text:"\u201cWe have online, in-center, full-access, and lots of lengths. Which would you like?\u201d",
-       fb:"Too many choices, and you did not help her. You are the expert. Say which option is best, and give one more."}
-    ]},
-  { phase:2,
-    lines:[
-      {who:"you",audio:"y2",text:"\u201cThe 12-month Full-Access course includes the small teacher classes, Complementary Conversation Classes, Social Clubs, your Coach and Teachers, and all your materials.\u201d"},
-      {who:"jill",audio:"j2",text:"Oh, that actually sounds really good. Can I ask how much it is?"}
-    ],
+    opts:["“I have two good options for you. The 12-month course takes you all the way to your goal. The 9-month course is a strong start that you can build on. Both give you plenty of speaking practice and our full support.”",
+          "“The 12-month Full-Access course is the only one that will work for your goal, so let's go with that.”",
+          "“We have online, in-center, full-access, and lots of lengths. Which would you like?”"],
+    fbs:["Well done. Two options let Jill choose. And both options lead to starting today.",
+         "One option feels like pressure. Give two options. Then Jill feels that she is choosing.",
+         "Too many choices, and you did not help her. You are the expert. Say which option is best, and give one more."]},
+   {lines:["“The 12-month Full-Access course includes the small teacher classes, Complementary Conversation Classes, Social Clubs, your Coach and Teachers, and all your materials.”",
+           "Oh, that actually sounds really good. Can I ask how much it is?"],
     situation:"You told her the benefits. Now you present the full investment. Watch for reaction and changes in body language.",
     prompt:"You have just presented the price. What do you do next?",
     tag:"After you present the price, stay quiet. Let Jill think. The first person to speak often loses.",
-    options:[
-      {correct:true,warmth:+9,text:"Talk about the full investment one time. Look at her calmly. Then stay quiet and wait for Jill to speak.",
-       say:"\u201cFor the 12-month course, including everything, it will be an investment of $2,000.\u201d (You look at Jill calmly, and then you wait.)",
-       fb:"Yes. The quiet moment lets Jill think about the value. Extra words or a discount make the price look weak."},
-      {correct:false,warmth:-6,text:"Present the price, then quickly add: \u201cbut we have a promotion this month, so it can be cheaper.\u201d",
-       fb:"Too soon. Never talk about a discount before Jill accepts the full price. It makes it look like we don't believe in our prices."},
-      {correct:false,warmth:-4,text:"Present the price. Then talk about payment plans right away, so there is no quiet moment.",
-       fb:"You filled the quiet moment. Jill needs it to think. Talk about the investment, then stop and wait."}
-    ]},
-  { phase:3,
-    lines:[{who:"jill",audio:"j3",text:"Right... okay. I have to be honest with you, that is a lot of money for me. It's a big decision."}],
+    opts:["Talk about the full investment one time. Look at her calmly. Then stay quiet and wait for Jill to speak.",
+          "Present the price, then quickly add: “but we have a promotion this month, so it can be cheaper.”",
+          "Present the price. Then talk about payment plans right away, so there is no quiet moment."],
+    say:"“For the 12-month course, including everything, it will be an investment of $2,000.” (You look at Jill calmly, and then you wait.)",
+    fbs:["Yes. The quiet moment lets Jill think about the value. Extra words or a discount make the price look weak.",
+         "Too soon. Never talk about a discount before Jill accepts the full price. It makes it look like we don't believe in our prices.",
+         "You filled the quiet moment. Jill needs it to think. Talk about the investment, then stop and wait."]},
+   {lines:["Right... okay. I have to be honest with you, that is a lot of money for me. It's a big decision."],
     situation:"Jill is thinking about the money. Now show her there is no risk.",
     prompt:"What do you say?",
     tag:"Apply the Three Magic Steps and use the guarantee. It shows Jill that she is safe. There is no risk for her.",
-    options:[
-      {correct:true,warmth:+8,text:"\u201cI understand, it's a big decision and a big investment. When you say 'a lot of money', what exactly do you mean? Is it doable? That's exactly why we give you a written guarantee. Follow the method, and if you don't reach your goal, we give your money back. You give us the time, and we take you there.\u201d",
-       fb:"Strong. Good use of the Three Magic Steps, and the guarantee shows Jill the result is safe and sure. Now the money feels like less of a risk."},
-      {correct:false,warmth:-5,text:"\u201cYes, it is expensive, but English is very important for your future, so it is worth it.\u201d",
-       fb:"You agreed it is \u201cexpensive\u201d, and then you pushed her. That does not make her feel safe. Use the Three Magic Steps and the guarantee."},
-      {correct:false,warmth:-6,text:"\u201cIf the price is a problem I can give you 20% off right now.\u201d",
-       fb:"She only stopped to think, and you dropped the price. Now the real price looks unfair. Use the guarantee first."}
-    ]},
-  { phase:4,
-    lines:[{who:"jill",audio:"j4",text:"Oh, there's a guarantee? Okay, that does make me feel a lot better."}],
+    opts:["“I understand, it's a big decision and a big investment. When you say 'a lot of money', what exactly do you mean? Is it doable? That's exactly why we give you a written guarantee. Follow the method, and if you don't reach your goal, we give your money back. You give us the time, and we take you there.”",
+          "“Yes, it is expensive, but English is very important for your future, so it is worth it.”",
+          "“If the price is a problem I can give you 20% off right now.”"],
+    fbs:["Strong. Good use of the Three Magic Steps, and the guarantee shows Jill the result is safe and sure. Now the money feels like less of a risk.",
+         "You agreed it is “expensive”, and then you pushed her. That does not make her feel safe. Use the Three Magic Steps and the guarantee.",
+         "She only stopped to think, and you dropped the price. Now the real price looks unfair. Use the guarantee first."]},
+   {lines:["Oh, there's a guarantee? Okay, that does make me feel a lot better."],
     situation:"Jill feels safer now. Ask her about starting. Do not ask a yes or no question.",
     prompt:"How do you ask her to start?",
-    tag:"Use an alternative close. Give Jill two choices, not \u201cyes\u201d or \u201cno\u201d.",
-    options:[
-      {correct:true,warmth:+8,text:"\u201cWhen would you like to start \u2014 this week or next week?\u201d",
-       fb:"Good. Both answers mean \u201cyes\u201d. Now starting feels like the normal next step."},
-      {correct:false,warmth:-6,text:"\u201cSo, would you like to sign up for the course today?\u201d",
-       fb:"A yes/no question gives Jill an easy way to say no. Ask \u201cwhen\u201d, not \u201cif\u201d."},
-      {correct:false,warmth:-3,text:"\u201cTake all the time you need and let me know whenever you have decided.\u201d",
-       fb:"This stops everything. You know this course is right for her. Help her take the next step."}
-    ]},
-  { phase:5, stepTag:"Three Magic Steps · Step 1",
-    lines:[{who:"jill",audio:"j5",text:"There's one thing, though. What if I don't like it once I start? I joined a gym last year, and after about a month I just stopped going. I always seem to lose interest."}],
+    tag:"Use an alternative close. Give Jill two choices, not “yes” or “no”.",
+    opts:["“When would you like to start — this week or next week?”",
+          "“So, would you like to sign up for the course today?”",
+          "“Take all the time you need and let me know whenever you have decided.”"],
+    fbs:["Good. Both answers mean “yes”. Now starting feels like the normal next step.",
+         "A yes/no question gives Jill an easy way to say no. Ask “when”, not “if”.",
+         "This stops everything. You know this course is right for her. Help her take the next step."]},
+   {lines:["There's one thing, though. What if I don't like it once I start? I joined a gym last year, and after about a month I just stopped going. I always seem to lose interest."],
     situation:"This is an objection. Use the first of the Three Magic Steps.",
     prompt:"Step 1 — what do you say first?",
     tag:"Step 1: Accept and Respect. Show her the doubt is normal. Do not argue with it.",
-    options:[
-      {correct:true,warmth:+7,text:"\u201cI understand, and thank you for being so honest with me. Many of our students feel exactly the same way at first.\u201d",
-       fb:"Yes. This is Step 1, Accept and Respect. You took her feeling seriously and you did not argue. Now you can ask more."},
-      {correct:false,warmth:-6,text:"\u201cDon't worry, that won't happen here. Our course is completely different from a gym.\u201d",
-       fb:"You jumped to the answer. First accept the doubt. Then ask about it. Then treat it."},
-      {correct:false,warmth:-7,text:"\u201cIf you stop coming, that is really your responsibility, not ours.\u201d",
-       fb:"This makes Jill feel blamed, and you lose her trust. Accept her feeling first."}
-    ]},
-  { phase:5, stepTag:"Three Magic Steps · Step 2",
-    lines:[{who:"jill",audio:"j6",text:"Thank you for saying that. I think it's really me I'm worried about, not your course."}],
+    opts:["“I understand, and thank you for being so honest with me. Many of our students feel exactly the same way at first.”",
+          "“Don't worry, that won't happen here. Our course is completely different from a gym.”",
+          "“If you stop coming, that is really your responsibility, not ours.”"],
+    fbs:["Yes. This is Step 1, Accept and Respect. You took her feeling seriously and you did not argue. Now you can ask more.",
+         "You jumped to the answer. First accept the doubt. Then ask about it. Then treat it.",
+         "This makes Jill feel blamed, and you lose her trust. Accept her feeling first."]},
+   {lines:["Thank you for saying that. I think it's really me I'm worried about, not your course."],
     situation:"You accepted her feeling. Now find out what the real doubt is.",
     prompt:"Step 2 — which question do you ask?",
     tag:"Step 2: Question and Understand. Ask an open question. Then Jill will explain more.",
-    options:[
-      {correct:true,warmth:+8,text:"\u201cCan I ask what makes you feel that way? I'd really like to understand, so I can help.\u201d",
-       fb:"That is an open question. Now Jill can explain. Her doubt is about herself, not about the method."},
-      {correct:false,warmth:-6,text:"\u201cSo is it the price that is really worrying you?\u201d",
-       fb:"This is a closed question, and you guessed the wrong doubt. Ask an open question and let Jill tell you."},
-      {correct:false,warmth:-5,text:"\u201cDo you think you will lose interest again? Yes or no?\u201d",
-       fb:"A yes or no question stops the talk. Ask \u201cwhat makes you feel that way?\u201d to find the real doubt."}
-    ]},
-  { phase:5, stepTag:"Three Magic Steps · Step 3",
-    lines:[{who:"jill",audio:"j7",text:"At the gym, nobody ever noticed if I turned up or not. So I lost interest, and in the end I just gave up."}],
+    opts:["“Can I ask what makes you feel that way? I'd really like to understand, so I can help.”",
+          "“So is it the price that is really worrying you?”",
+          "“Do you think you will lose interest again? Yes or no?”"],
+    fbs:["That is an open question. Now Jill can explain. Her doubt is about herself, not about the method.",
+         "This is a closed question, and you guessed the wrong doubt. Ask an open question and let Jill tell you.",
+         "A yes or no question stops the talk. Ask “what makes you feel that way?” to find the real doubt."]},
+   {lines:["At the gym, nobody ever noticed if I turned up or not. So I lost interest, and in the end I just gave up."],
     situation:"Now you know the real doubt. Jill is worried about herself. It is not about the method or the price.",
     prompt:"Step 3 — how do you treat this objection?",
     tag:"Step 3: Treat the real objection. Jill doubts herself. So talk about support, not about money.",
-    options:[
-      {correct:true,warmth:+9,text:"\u201cThat makes a lot of sense. Here it works differently. I'm your Consultant, so we'll meet regularly. Your Coach and Teachers follow your progress and give you feedback. You're never on your own here, and that's how we make sure you reach your goal.\u201d",
-       fb:"Excellent. Jill was worried about herself. You answered with the support she will get. That is how you treat the real objection."},
-      {correct:false,warmth:-6,text:"\u201cRemember, we have the money-back guarantee, so you have nothing to lose.\u201d",
-       fb:"The guarantee answers a money doubt. Jill's doubt is about herself. Answer with support instead."},
-      {correct:false,warmth:-5,text:"\u201cEveryone feels like that sometimes. Let's just sign the contract and see how it goes.\u201d",
-       fb:"You ignored her real doubt. Show her the support she will get. Then ask her to start."}
-    ]},
-  { phase:6,
-    lines:[{who:"jill",audio:"j8",text:"Okay, that really does help. I think I want to do this... I'm just not sure about the 9 months or the 12 months and will have to think about it."}],
+    opts:["“That makes a lot of sense. Here it works differently. I'm your Consultant, so we'll meet regularly. Your Coach and Teachers follow your progress and give you feedback. You're never on your own here, and that's how we make sure you reach your goal.”",
+          "“Remember, we have the money-back guarantee, so you have nothing to lose.”",
+          "“Everyone feels like that sometimes. Let's just sign the contract and see how it goes.”"],
+    fbs:["Excellent. Jill was worried about herself. You answered with the support she will get. That is how you treat the real objection.",
+         "The guarantee answers a money doubt. Jill's doubt is about herself. Answer with support instead.",
+         "You ignored her real doubt. Show her the support she will get. Then ask her to start."]},
+   {lines:["Okay, that really does help. I think I want to do this... I'm just not sure about the 9 months or the 12 months and will have to think about it."],
     situation:"Listen carefully. This is not an objection.",
     prompt:"What is this, and what do you do?",
     tag:"This is a buying signal. Jill has decided to study. She only needs help to choose. Help her, then ask her to start.",
-    options:[
-      {correct:true,warmth:+9,text:"\u201cGood question, and it sounds like you're ready to start. Your goal is those university applications, so the 12-month course is the one that takes you all the way and will make sure you are confident. I suggest we get you started with that one?\u201d",
-       fb:"Perfect. You heard the buying signal. You helped her choose the right option. Then you asked her to start."},
-      {correct:false,warmth:-6,text:"\u201cNo problem, take your time to think about which one you want and call me when you decide.\u201d",
-       fb:"You missed the buying signal. Jill already decided to study. Help her choose now. Do not send her home, she's ready to close."},
-      {correct:false,warmth:-4,text:"\u201cThey are both fine, it really doesn't matter, just pick whichever one you like.\u201d",
-       fb:"A buying signal needs your help. Explain which option helps her reach her goal. Then ask her to start."}
-    ]}
-];
+    opts:["“Good question, and it sounds like you're ready to start. Your goal is those university applications, so the 12-month course is the one that takes you all the way and will make sure you are confident. I suggest we get you started with that one?”",
+          "“No problem, take your time to think about which one you want and call me when you decide.”",
+          "“They are both fine, it really doesn't matter, just pick whichever one you like.”"],
+    fbs:["Perfect. You heard the buying signal. You helped her choose the right option. Then you asked her to start.",
+         "You missed the buying signal. Jill already decided to study. Help her choose now. Do not send her home, she's ready to close.",
+         "A buying signal needs your help. Explain which option helps her reach her goal. Then ask her to start."]}
+  ]
+},
+
+/* ---------------------------------------------------------------- Italiano */
+it:{
+  lang:"it",
+  fs:{ enter:"Schermo intero", exit:"Esci da schermo intero", newtab:"Apri in una nuova scheda", hint:"Premi F11 per riempire lo schermo" },
+  eyebrow:"Soluzione, chiusura e obiezioni · Pratica",
+  title:"L'appuntamento di Jill — il Consulente sei tu",
+  intro:"Hai completato l'analisi dei bisogni. Ora mostra a Jill il corso giusto. Poi chiedile di iniziare. Se ha un dubbio, trattalo. A ogni passo scegli tu cosa dire.",
+  persona:"<b>Jill · Studentessa universitaria · 23 anni</b><br><b>Il suo obiettivo:</b> studiare in una grande università negli Stati Uniti<br><b>Il suo livello attuale:</b> 6. Vuole parlare e scrivere con sicurezza.<br><b>Il suo tempo:</b> può studiare 2 o 3 volte a settimana<br><b>Il suo punto sensibile:</b> ha fallito due esami. È delusa e ha perso fiducia.<br><b>Le sue opzioni:</b> Full-Access. A: 9 mesi. B: 12 mesi.<br><b>Nota:</b> vive lontano dal Centro. Viene spesso in città.",
+  setupHeading:"Prima di iniziare", startBtn:"Inizia l'appuntamento ▸",
+  sceneNote:"Tocca a te. Parla con Jill e chiudi la vendita.",
+  warmthName:"Fiducia e sintonia", you:"Tu", jill:"Jill",
+  correctTag:"✓ Bella mossa", rethinkTag:"Ripensiamoci",
+  continue:"Continua", tryAgain:"Prova un'altra risposta",
+  finishBtn:"Vedi i risultati ▸", restartBtn:"Riprova",
+  recapTitle:"Che cosa hai appena praticato",
+  finalBadge:"★", finalTitle:"Appuntamento completato",
+  codeLabel:"Codice di completamento", code:"SOLUTION-4080",
+  endGood:"Hai dato a Jill due opzioni chiare. Sei rimasto tranquillo quando hai presentato il prezzo. Hai usato la garanzia. Hai trovato il suo vero dubbio e l'hai trattato con i Tre Passi Magici. È così che si chiudono più vendite.",
+  steps:["Riformula","Dai una scelta","Presenta il prezzo","La garanzia","Chiedi di iniziare","Tratta l'obiezione","Segnale d'acquisto"],
+  recap:[
+    "Chiusura parziale: riformula ciò su cui siete d'accordo e ottieni un «sì».",
+    "Dai sempre due opzioni: una raggiunge l'obiettivo, una è un buon inizio.",
+    "Presenta il prezzo con calma. Usa la parola «investimento». Poi resta in silenzio.",
+    "Usa la garanzia per dimostrare che non c'è alcun rischio.",
+    "Fai una domanda con due scelte, non una domanda sì o no.",
+    "Tre Passi Magici: Accetta &amp; Rispetta → Domanda &amp; Comprendi → Tratta.",
+    "Un segnale d'acquisto non è un'obiezione. Aiuta Jill a scegliere, poi chiedile di iniziare."
+  ],
+  steps_text:[
+   {lines:["Quindi sì, la mia situazione è più o meno questa. Ho fallito quei due esami per il mio livello di inglese, ma mi piacerebbe davvero studiare negli Stati Uniti l'anno prossimo. Farò di nuovo domanda l'anno prossimo."],
+    situation:"Ora sai tutto di Jill. Fai una cosa prima di mostrarle un corso.",
+    prompt:"Che cosa dici per prima cosa?",
+    tag:"Chiusura parziale: riformula ciò su cui siete d'accordo. Poi ottieni un altro «sì» prima di andare avanti.",
+    opts:["«Quindi la cosa più importante per lei è avere un inglese sicuro per quelle domande di ammissione, e studiare due o tre volte a settimana le va bene. È corretto?»",
+          "«Perfetto. Le mostro i nostri prezzi. Così vede cosa rientra nel suo budget.»",
+          "«Adesso le spiego tutti i diversi corsi che abbiamo in Wall Street English.»"],
+    fbs:["Bene. Hai riformulato il suo obiettivo. Hai chiesto un piccolo «sì». Questa è una chiusura parziale. Rende molto più facile l'ultimo passo.",
+         "Troppo in fretta. Sei andato dritto al prezzo. Prima riformula ciò su cui siete d'accordo. Poi mostra il valore. Il prezzo viene per ultimo.",
+         "Così parli dei corsi, non di Jill. Parla prima del suo obiettivo. Poi il corso sembrerà fatto su misura per lei."]},
+   {lines:["Sì, esatto! Voglio solo sentirmi sicura prima di inviare le domande."],
+    situation:"Jill è al livello 6. Il suo obiettivo è molto più alto. Hai un'opzione da 9 mesi e una da 12 mesi.",
+    prompt:"Come le mostri il corso?",
+    tag:"Dai sempre due opzioni. Una raggiunge il suo obiettivo. Una è un buon inizio. Ora Jill può scegliere.",
+    opts:["«Ho due buone opzioni per lei. Il corso di 12 mesi la porta fino al suo obiettivo. Il corso di 9 mesi è un ottimo inizio su cui costruire. Entrambi le danno molta pratica di conversazione e tutto il nostro supporto.»",
+          "«Il corso Full-Access di 12 mesi è l'unico che funziona per il suo obiettivo, quindi scegliamo quello.»",
+          "«Abbiamo online, in centro, full-access e tante durate diverse. Quale preferisce?»"],
+    fbs:["Ottimo. Due opzioni permettono a Jill di scegliere. Ed entrambe portano a iniziare oggi.",
+         "Una sola opzione sembra una pressione. Dai due opzioni. Così Jill sente di essere lei a scegliere.",
+         "Troppe scelte, e non l'hai aiutata. L'esperto sei tu. Indica qual è l'opzione migliore e aggiungine una."]},
+   {lines:["«Il corso Full-Access di 12 mesi include le classi ridotte con l'insegnante, le Complementary Conversation Classes, i Social Club, il suo Coach e gli insegnanti, e tutti i materiali.»",
+           "Oh, in effetti suona molto bene. Posso chiederle quanto costa?"],
+    situation:"Le hai illustrato i benefici. Ora presenti l'investimento completo. Osserva le reazioni e i cambiamenti nel linguaggio del corpo.",
+    prompt:"Hai appena presentato il prezzo. Che cosa fai adesso?",
+    tag:"Dopo aver presentato il prezzo, resta in silenzio. Lascia pensare Jill. Chi parla per primo spesso perde.",
+    opts:["Parla dell'investimento completo una sola volta. Guardala con calma. Poi resta in silenzio e aspetta che parli Jill.",
+          "Presenta il prezzo, poi aggiungi subito: «ma questo mese abbiamo una promozione, quindi può costare meno».",
+          "Presenta il prezzo. Poi parla subito dei piani di pagamento, così non c'è nessun momento di silenzio."],
+    say:"«Per il corso di 12 mesi, tutto incluso, l'investimento è di 2.000 $.» (Guardi Jill con calma e poi aspetti.)",
+    fbs:["Sì. Il momento di silenzio permette a Jill di pensare al valore. Parole in più o uno sconto fanno sembrare il prezzo debole.",
+         "Troppo presto. Non parlare mai di sconti prima che Jill accetti il prezzo pieno. Fa sembrare che non crediamo nei nostri prezzi.",
+         "Hai riempito il momento di silenzio. A Jill serve per pensare. Parla dell'investimento, poi fermati e aspetta."]},
+   {lines:["Capisco... va bene. Devo essere sincera con lei, per me è una cifra importante. È una decisione grande."],
+    situation:"Jill sta pensando ai soldi. Ora mostrale che non c'è alcun rischio.",
+    prompt:"Che cosa dici?",
+    tag:"Applica i Tre Passi Magici e usa la garanzia. Dimostra a Jill che è al sicuro. Per lei non c'è alcun rischio.",
+    opts:["«Capisco, è una decisione importante e un investimento importante. Quando dice che è una cifra importante, che cosa intende esattamente? È sostenibile? È proprio per questo che le diamo una garanzia scritta. Segua il metodo e, se non raggiunge il suo obiettivo, le restituiamo i soldi. Lei ci dà il tempo, e noi la portiamo fin là.»",
+          "«Sì, è caro, ma l'inglese è molto importante per il suo futuro, quindi ne vale la pena.»",
+          "«Se il prezzo è un problema posso farle il 20% di sconto subito.»"],
+    fbs:["Forte. Buon uso dei Tre Passi Magici, e la garanzia dimostra a Jill che il risultato è sicuro e certo. Ora i soldi sembrano un rischio minore.",
+         "Hai ammesso che è «caro» e poi hai insistito. Questo non la fa sentire al sicuro. Usa i Tre Passi Magici e la garanzia.",
+         "Si è solo fermata a pensare e tu hai abbassato il prezzo. Ora il prezzo vero sembra ingiusto. Usa prima la garanzia."]},
+   {lines:["Oh, c'è una garanzia? Va bene, questo mi fa sentire molto meglio."],
+    situation:"Ora Jill si sente più sicura. Chiedile di iniziare. Non fare una domanda sì o no.",
+    prompt:"Come le chiedi di iniziare?",
+    tag:"Usa una chiusura alternativa. Dai a Jill due scelte, non «sì» o «no».",
+    opts:["«Quando le piacerebbe iniziare — questa settimana o la prossima?»",
+          "«Allora, vuole iscriversi al corso oggi?»",
+          "«Si prenda tutto il tempo che le serve e mi faccia sapere quando ha deciso.»"],
+    fbs:["Bene. Entrambe le risposte significano «sì». Ora iniziare sembra il passo successivo naturale.",
+         "Una domanda sì/no dà a Jill un modo facile di dire no. Chiedi «quando», non «se».",
+         "Così si ferma tutto. Sai che questo corso è giusto per lei. Aiutala a fare il passo successivo."]},
+   {lines:["C'è una cosa, però. E se poi non mi piacesse, una volta iniziato? L'anno scorso mi sono iscritta in palestra e dopo circa un mese ho smesso di andarci. Sembra che perda sempre interesse."],
+    situation:"Questa è un'obiezione. Usa il primo dei Tre Passi Magici.",
+    prompt:"Passo 1 — che cosa dici per prima cosa?",
+    tag:"Passo 1: Accetta e Rispetta. Mostrale che il dubbio è normale. Non discuterlo.",
+    opts:["«La capisco, e la ringrazio per essere stata così sincera con me. Molti dei nostri studenti all'inizio si sentono esattamente così.»",
+          "«Non si preoccupi, qui non succederà. Il nostro corso è completamente diverso da una palestra.»",
+          "«Se smette di venire, la responsabilità è sua, non nostra.»"],
+    fbs:["Sì. Questo è il Passo 1, Accetta e Rispetta. Hai preso sul serio ciò che prova e non hai discusso. Ora puoi chiedere di più.",
+         "Sei saltato alla risposta. Prima accetta il dubbio. Poi fai domande. Poi trattalo.",
+         "Così Jill si sente accusata e perdi la sua fiducia. Accetta prima ciò che prova."]},
+   {lines:["Grazie per averlo detto. Credo che in realtà il problema sia io, non il vostro corso."],
+    situation:"Hai accettato ciò che prova. Ora scopri qual è il vero dubbio.",
+    prompt:"Passo 2 — quale domanda fai?",
+    tag:"Passo 2: Domanda e Comprendi. Fai una domanda aperta. Così Jill spiegherà di più.",
+    opts:["«Posso chiederle che cosa glielo fa pensare? Vorrei davvero capire, così posso aiutarla.»",
+          "«Quindi è il prezzo che la preoccupa davvero?»",
+          "«Pensa che perderà di nuovo interesse? Sì o no?»"],
+    fbs:["Questa è una domanda aperta. Ora Jill può spiegare. Il suo dubbio riguarda se stessa, non il metodo.",
+         "Questa è una domanda chiusa, e hai indovinato il dubbio sbagliato. Fai una domanda aperta e lascia parlare Jill.",
+         "Una domanda sì o no blocca il dialogo. Chiedi «che cosa glielo fa pensare?» per trovare il vero dubbio."]},
+   {lines:["In palestra nessuno notava mai se andavo o no. Così ho perso interesse e alla fine ho lasciato perdere."],
+    situation:"Ora conosci il vero dubbio. Jill è preoccupata per se stessa. Non è una questione di metodo né di prezzo.",
+    prompt:"Passo 3 — come tratti questa obiezione?",
+    tag:"Passo 3: Tratta la vera obiezione. Jill dubita di sé. Quindi parla di supporto, non di soldi.",
+    opts:["«Ha perfettamente senso. Qui funziona diversamente. Io sono la sua Consulente, quindi ci vedremo regolarmente. Il suo Coach e gli insegnanti seguono i suoi progressi e le danno feedback. Qui non è mai da sola, ed è così che ci assicuriamo che raggiunga il suo obiettivo.»",
+          "«Ricordi che abbiamo la garanzia soddisfatti o rimborsati, quindi non ha nulla da perdere.»",
+          "«Capita a tutti ogni tanto. Firmiamo il contratto e vediamo come va.»"],
+    fbs:["Eccellente. Jill era preoccupata per se stessa. Hai risposto con il supporto che riceverà. È così che si tratta la vera obiezione.",
+         "La garanzia risponde a un dubbio sui soldi. Il dubbio di Jill riguarda se stessa. Rispondi invece con il supporto.",
+         "Hai ignorato il suo vero dubbio. Mostrale il supporto che riceverà. Poi chiedile di iniziare."]},
+   {lines:["Va bene, questo mi aiuta davvero. Credo di volerlo fare... non sono solo sicura se 9 mesi o 12 mesi e dovrò pensarci."],
+    situation:"Ascolta con attenzione. Questa non è un'obiezione.",
+    prompt:"Che cos'è questo, e che cosa fai?",
+    tag:"Questo è un segnale d'acquisto. Jill ha deciso di studiare. Le serve solo aiuto per scegliere. Aiutala, poi chiedile di iniziare.",
+    opts:["«Ottima domanda, e sembra che sia pronta a iniziare. Il suo obiettivo sono quelle domande di ammissione, quindi il corso di 12 mesi è quello che la porta fino in fondo e le darà sicurezza. Le propongo di partire con quello.»",
+          "«Nessun problema, si prenda il tempo di pensare a quale preferisce e mi chiami quando ha deciso.»",
+          "«Vanno bene entrambi, davvero non fa differenza, scelga quello che preferisce.»"],
+    fbs:["Perfetto. Hai colto il segnale d'acquisto. L'hai aiutata a scegliere l'opzione giusta. Poi le hai chiesto di iniziare.",
+         "Ti sei perso il segnale d'acquisto. Jill ha già deciso di studiare. Aiutala a scegliere adesso. Non mandarla a casa, è pronta a chiudere.",
+         "Un segnale d'acquisto ha bisogno del tuo aiuto. Spiega quale opzione la aiuta a raggiungere il suo obiettivo. Poi chiedile di iniziare."]}
+  ]
+},
+/* -------------------------------------------------------------- Português */
+pt:{
+  lang:"pt",
+  fs:{ enter:"Ecrã inteiro", exit:"Sair do ecrã inteiro", newtab:"Abrir num novo separador", hint:"Prima F11 para preencher o ecrã" },
+  eyebrow:"Solução, fecho e objeções · Prática",
+  title:"A reunião da Jill — o Consultor é você",
+  intro:"Terminou a análise de necessidades. Agora mostre à Jill o curso certo. Depois peça-lhe para começar. Se ela tiver uma dúvida, trate-a. Em cada passo é você que escolhe o que dizer.",
+  persona:"<b>Jill · Estudante universitária · 23 anos</b><br><b>O objetivo dela:</b> estudar numa grande universidade nos Estados Unidos<br><b>O nível dela agora:</b> 6. Quer falar e escrever com confiança.<br><b>O tempo dela:</b> pode estudar 2 ou 3 vezes por semana<br><b>O ponto sensível dela:</b> chumbou em dois exames. Está desanimada e perdeu a esperança.<br><b>As opções dela:</b> Full-Access. A: 9 meses. B: 12 meses.<br><b>Nota:</b> vive longe do Centro. Vem à cidade com frequência.",
+  setupHeading:"Antes de começar", startBtn:"Começar a reunião ▸",
+  sceneNote:"É a sua vez. Fale com a Jill e feche a venda.",
+  warmthName:"Confiança e ligação", you:"Você", jill:"Jill",
+  correctTag:"✓ Boa jogada", rethinkTag:"Vamos repensar",
+  continue:"Continuar", tryAgain:"Tentar outra resposta",
+  finishBtn:"Ver os resultados ▸", restartBtn:"Tentar de novo",
+  recapTitle:"O que acabou de praticar",
+  finalBadge:"★", finalTitle:"Reunião concluída",
+  codeLabel:"Código de conclusão", code:"SOLUTION-4080",
+  endGood:"Deu à Jill duas opções claras. Manteve a calma ao apresentar o preço. Usou a garantia. Encontrou a verdadeira dúvida dela e tratou-a com os Três Passos Mágicos. É assim que se fecham mais vendas.",
+  steps:["Reformular","Dar uma escolha","Apresentar o preço","A garantia","Pedir para começar","Tratar a objeção","Sinal de compra"],
+  recap:[
+    "Fecho parcial: reformule aquilo em que ambos concordam e obtenha um “sim”.",
+    "Dê sempre duas opções: uma alcança o objetivo, outra é um bom começo.",
+    "Apresente o preço com calma. Use a palavra “investimento”. Depois fique em silêncio.",
+    "Use a garantia para mostrar que não há risco.",
+    "Faça uma pergunta com duas escolhas, não uma pergunta de sim ou não.",
+    "Três Passos Mágicos: Aceitar &amp; Respeitar → Perguntar &amp; Compreender → Tratar.",
+    "Um sinal de compra não é uma objeção. Ajude a Jill a escolher e peça-lhe para começar."
+  ],
+  steps_text:[
+   {lines:["Então sim, a minha situação é mais ou menos esta. Chumbei naqueles dois exames por causa do meu nível de inglês, mas gostava mesmo muito de estudar nos Estados Unidos no próximo ano. Vou candidatar-me outra vez no próximo ano."],
+    situation:"Agora já sabe tudo sobre a Jill. Faça uma coisa antes de lhe mostrar um curso.",
+    prompt:"O que diz primeiro?",
+    tag:"Fecho parcial: reformule aquilo em que ambos concordam. Depois obtenha mais um “sim” antes de avançar.",
+    opts:["“Então o mais importante para si é ter inglês com confiança para essas candidaturas, e estudar duas ou três vezes por semana funciona bem para si. É isso?”",
+          "“Ótimo. Vou mostrar-lhe os nossos preços. Assim vê o que cabe no seu orçamento.”",
+          "“Agora vou explicar-lhe todos os cursos diferentes que temos na Wall Street English.”"],
+    fbs:["Bem. Reformulou o objetivo dela. Pediu um pequeno “sim”. Isto é um fecho parcial. Torna o último passo muito mais fácil.",
+         "Demasiado rápido. Foi direto ao preço. Primeiro reformule aquilo em que concordaram. Depois mostre o valor. O preço vem no fim.",
+         "Isto é sobre os cursos, não sobre a Jill. Fale primeiro do objetivo dela. Depois o curso parece feito à medida."]},
+   {lines:["Sim, exatamente! Só quero sentir-me confiante antes de enviar as candidaturas."],
+    situation:"A Jill está no nível 6. O objetivo dela é muito mais alto. Tem uma opção de 9 meses e uma de 12 meses.",
+    prompt:"Como lhe mostra o curso?",
+    tag:"Dê sempre duas opções. Uma alcança o objetivo dela. Outra é um bom começo. Agora a Jill pode escolher.",
+    opts:["“Tenho duas boas opções para si. O curso de 12 meses leva-a até ao seu objetivo. O curso de 9 meses é um começo forte sobre o qual pode construir. Ambos lhe dão muita prática de conversação e todo o nosso apoio.”",
+          "“O curso Full-Access de 12 meses é o único que funciona para o seu objetivo, por isso vamos por aí.”",
+          "“Temos online, no centro, full-access e muitas durações. Qual prefere?”"],
+    fbs:["Muito bem. Duas opções deixam a Jill escolher. E ambas levam a começar hoje.",
+         "Uma só opção parece pressão. Dê duas opções. Assim a Jill sente que é ela a escolher.",
+         "Demasiadas escolhas, e não a ajudou. O especialista é você. Diga qual é a melhor opção e acrescente mais uma."]},
+   {lines:["“O curso Full-Access de 12 meses inclui as turmas pequenas com professor, as Complementary Conversation Classes, os Social Clubs, o seu Coach e os professores, e todos os materiais.”",
+           "Oh, isso até soa muito bem. Posso perguntar quanto custa?"],
+    situation:"Já lhe falou dos benefícios. Agora apresenta o investimento total. Observe a reação e as mudanças na linguagem corporal.",
+    prompt:"Acabou de apresentar o preço. O que faz a seguir?",
+    tag:"Depois de apresentar o preço, fique em silêncio. Deixe a Jill pensar. Quem fala primeiro costuma perder.",
+    opts:["Fale do investimento total uma só vez. Olhe para ela com calma. Depois fique em silêncio e espere que a Jill fale.",
+          "Apresente o preço e acrescente logo: “mas temos uma promoção este mês, por isso pode ficar mais barato”.",
+          "Apresente o preço. Depois fale logo dos planos de pagamento, para não haver nenhum momento de silêncio."],
+    say:"“Para o curso de 12 meses, com tudo incluído, será um investimento de 2.000 $.” (Olha para a Jill com calma e depois espera.)",
+    fbs:["Sim. O momento de silêncio deixa a Jill pensar no valor. Palavras a mais ou um desconto fazem o preço parecer frágil.",
+         "Demasiado cedo. Nunca fale de descontos antes de a Jill aceitar o preço total. Faz parecer que não acreditamos nos nossos preços.",
+         "Preencheu o momento de silêncio. A Jill precisa dele para pensar. Fale do investimento, depois pare e espere."]},
+   {lines:["Certo... está bem. Tenho de ser sincera consigo, isso é muito dinheiro para mim. É uma decisão grande."],
+    situation:"A Jill está a pensar no dinheiro. Agora mostre-lhe que não há risco.",
+    prompt:"O que diz?",
+    tag:"Aplique os Três Passos Mágicos e use a garantia. Mostra à Jill que ela está segura. Não há risco para ela.",
+    opts:["“Compreendo, é uma decisão grande e um investimento grande. Quando diz muito dinheiro, o que quer dizer exatamente? É comportável? É precisamente por isso que lhe damos uma garantia escrita. Siga o método e, se não atingir o seu objetivo, devolvemos o seu dinheiro. A Jill dá-nos o tempo, e nós levamo-la até lá.”",
+          "“Sim, é caro, mas o inglês é muito importante para o seu futuro, por isso vale a pena.”",
+          "“Se o preço é um problema posso dar-lhe já 20% de desconto.”"],
+    fbs:["Forte. Bom uso dos Três Passos Mágicos, e a garantia mostra à Jill que o resultado é seguro e certo. Agora o dinheiro parece menos arriscado.",
+         "Concordou que é “caro” e depois pressionou-a. Isso não a faz sentir segura. Use os Três Passos Mágicos e a garantia.",
+         "Ela só parou para pensar e você baixou o preço. Agora o preço real parece injusto. Use primeiro a garantia."]},
+   {lines:["Ah, há uma garantia? Está bem, isso deixa-me bem mais descansada."],
+    situation:"A Jill sente-se mais segura agora. Peça-lhe para começar. Não faça uma pergunta de sim ou não.",
+    prompt:"Como lhe pede para começar?",
+    tag:"Use um fecho alternativo. Dê à Jill duas escolhas, não “sim” ou “não”.",
+    opts:["“Quando gostaria de começar — esta semana ou na próxima?”",
+          "“Então, quer inscrever-se no curso hoje?”",
+          "“Leve o tempo que precisar e diga-me quando tiver decidido.”"],
+    fbs:["Bem. As duas respostas significam “sim”. Agora começar parece o passo seguinte natural.",
+         "Uma pergunta de sim/não dá à Jill uma forma fácil de dizer não. Pergunte “quando”, não “se”.",
+         "Isto para tudo. Sabe que este curso é o certo para ela. Ajude-a a dar o passo seguinte."]},
+   {lines:["Há só uma coisa. E se eu não gostar depois de começar? No ano passado inscrevi-me num ginásio e ao fim de um mês deixei de ir. Parece que perco sempre o interesse."],
+    situation:"Isto é uma objeção. Use o primeiro dos Três Passos Mágicos.",
+    prompt:"Passo 1 — o que diz primeiro?",
+    tag:"Passo 1: Aceitar e Respeitar. Mostre-lhe que a dúvida é normal. Não discuta com ela.",
+    opts:["“Compreendo, e obrigada por ser tão sincera comigo. Muitos dos nossos alunos sentem exatamente o mesmo no início.”",
+          "“Não se preocupe, isso não vai acontecer aqui. O nosso curso é completamente diferente de um ginásio.”",
+          "“Se deixar de vir, a responsabilidade é sua, não nossa.”"],
+    fbs:["Sim. Este é o Passo 1, Aceitar e Respeitar. Levou o que ela sente a sério e não discutiu. Agora pode perguntar mais.",
+         "Saltou para a resposta. Primeiro aceite a dúvida. Depois pergunte sobre ela. Depois trate-a.",
+         "Isto faz a Jill sentir-se culpada e perde a confiança dela. Aceite primeiro o que ela sente."]},
+   {lines:["Obrigada por dizer isso. Acho que na verdade o problema sou eu, não o vosso curso."],
+    situation:"Aceitou o que ela sente. Agora descubra qual é a verdadeira dúvida.",
+    prompt:"Passo 2 — que pergunta faz?",
+    tag:"Passo 2: Perguntar e Compreender. Faça uma pergunta aberta. Assim a Jill explica mais.",
+    opts:["“Posso perguntar o que a faz sentir assim? Gostava mesmo de perceber, para poder ajudar.”",
+          "“Então é o preço que a está mesmo a preocupar?”",
+          "“Acha que vai perder o interesse outra vez? Sim ou não?”"],
+    fbs:["Isso é uma pergunta aberta. Agora a Jill pode explicar. A dúvida dela é sobre si própria, não sobre o método.",
+         "Esta é uma pergunta fechada, e adivinhou a dúvida errada. Faça uma pergunta aberta e deixe a Jill contar-lhe.",
+         "Uma pergunta de sim ou não trava a conversa. Pergunte “o que a faz sentir assim?” para encontrar a verdadeira dúvida."]},
+   {lines:["No ginásio, ninguém reparava se eu aparecia ou não. Por isso perdi o interesse e no fim acabei por desistir."],
+    situation:"Agora conhece a verdadeira dúvida. A Jill está preocupada consigo própria. Não é o método nem o preço.",
+    prompt:"Passo 3 — como trata esta objeção?",
+    tag:"Passo 3: Trate a verdadeira objeção. A Jill duvida de si própria. Por isso fale de apoio, não de dinheiro.",
+    opts:["“Isso faz todo o sentido. Aqui funciona de outra forma. Eu sou a sua Consultora, por isso vamos encontrar-nos regularmente. O seu Coach e os professores acompanham o seu progresso e dão-lhe feedback. Aqui nunca está sozinha, e é assim que garantimos que alcança o seu objetivo.”",
+          "“Lembre-se de que temos a garantia de devolução do dinheiro, por isso não tem nada a perder.”",
+          "“Toda a gente se sente assim às vezes. Vamos só assinar o contrato e ver como corre.”"],
+    fbs:["Excelente. A Jill estava preocupada consigo própria. Respondeu com o apoio que ela vai ter. É assim que se trata a verdadeira objeção.",
+         "A garantia responde a uma dúvida sobre dinheiro. A dúvida da Jill é sobre si própria. Responda antes com apoio.",
+         "Ignorou a verdadeira dúvida dela. Mostre-lhe o apoio que vai ter. Depois peça-lhe para começar."]},
+   {lines:["Está bem, isso ajuda mesmo. Acho que quero fazer isto... só não tenho a certeza entre os 9 meses ou os 12 meses e vou ter de pensar."],
+    situation:"Ouça com atenção. Isto não é uma objeção.",
+    prompt:"O que é isto, e o que faz?",
+    tag:"Isto é um sinal de compra. A Jill já decidiu estudar. Só precisa de ajuda para escolher. Ajude-a e peça-lhe para começar.",
+    opts:["“Boa pergunta, e parece que está pronta para começar. O seu objetivo são essas candidaturas à universidade, por isso o curso de 12 meses é o que a leva até ao fim e garante que fica confiante. Sugiro que comecemos por esse.”",
+          "“Sem problema, pense com calma em qual prefere e ligue-me quando decidir.”",
+          "“Os dois são bons, não faz diferença nenhuma, escolha o que quiser.”"],
+    fbs:["Perfeito. Ouviu o sinal de compra. Ajudou-a a escolher a opção certa. Depois pediu-lhe para começar.",
+         "Perdeu o sinal de compra. A Jill já tinha decidido estudar. Ajude-a a escolher agora. Não a mande para casa, ela está pronta para fechar.",
+         "Um sinal de compra precisa da sua ajuda. Explique qual a opção que a ajuda a alcançar o objetivo. Depois peça-lhe para começar."]}
+  ]
+},
+
+/* ---------------------------------------------------------------- Español */
+es:{
+  lang:"es",
+  fs:{ enter:"Pantalla completa", exit:"Salir de pantalla completa", newtab:"Abrir en una pestaña nueva", hint:"Pulsa F11 para ocupar toda la pantalla" },
+  eyebrow:"Solución, cierre y objeciones · Práctica",
+  title:"La cita de Jill — el Consultor eres tú",
+  intro:"Has terminado el análisis de necesidades. Ahora muéstrale a Jill el curso adecuado. Después pídele que empiece. Si tiene una duda, trátala. En cada paso eliges tú qué decir.",
+  persona:"<b>Jill · Estudiante universitaria · 23 años</b><br><b>Su objetivo:</b> estudiar en una gran universidad de Estados Unidos<br><b>Su nivel ahora:</b> 6. Quiere hablar y escribir con confianza.<br><b>Su tiempo:</b> puede estudiar 2 o 3 veces por semana<br><b>Su punto sensible:</b> suspendió dos exámenes. Está desanimada y ha perdido la esperanza.<br><b>Sus opciones:</b> Full-Access. A: 9 meses. B: 12 meses.<br><b>Nota:</b> vive lejos del Centro. Viene a la ciudad a menudo.",
+  setupHeading:"Antes de empezar", startBtn:"Empezar la cita ▸",
+  sceneNote:"Te toca. Habla con Jill y cierra la venta.",
+  warmthName:"Confianza y sintonía", you:"Tú", jill:"Jill",
+  correctTag:"✓ Buena jugada", rethinkTag:"Repensémoslo",
+  continue:"Continuar", tryAgain:"Prueba otra respuesta",
+  finishBtn:"Ver tus resultados ▸", restartBtn:"Intentar otra vez",
+  recapTitle:"Lo que acabas de practicar",
+  finalBadge:"★", finalTitle:"Cita completada",
+  codeLabel:"Código de finalización", code:"SOLUTION-4080",
+  endGood:"Le diste a Jill dos opciones claras. Mantuviste la calma al presentar el precio. Usaste la garantía. Encontraste su duda real y la trataste con los Tres Pasos Mágicos. Así se cierran más ventas.",
+  steps:["Repetir lo dicho","Dar una opción","Presentar el precio","La garantía","Pedir que empiece","Tratar la objeción","Señal de compra"],
+  recap:[
+    "Cierre parcial: repite aquello en lo que estáis de acuerdo y consigue un «sí».",
+    "Da siempre dos opciones: una alcanza el objetivo, otra es un buen comienzo.",
+    "Presenta el precio con calma. Usa la palabra «inversión». Luego quédate en silencio.",
+    "Usa la garantía para demostrar que no hay riesgo.",
+    "Haz una pregunta con dos opciones, no una pregunta de sí o no.",
+    "Tres Pasos Mágicos: Aceptar &amp; Respetar → Preguntar &amp; Comprender → Tratar.",
+    "Una señal de compra no es una objeción. Ayuda a Jill a elegir y pídele que empiece."
+  ],
+  steps_text:[
+   {lines:["Así que sí, esa es más o menos mi situación. Suspendí esos dos exámenes por mi nivel de inglés, pero me encantaría estudiar en Estados Unidos el año que viene. Voy a presentar la solicitud otra vez el año que viene."],
+    situation:"Ya lo sabes todo sobre Jill. Haz una cosa antes de enseñarle un curso.",
+    prompt:"¿Qué dices primero?",
+    tag:"Cierre parcial: repite aquello en lo que estáis de acuerdo. Después consigue otro «sí» antes de seguir.",
+    opts:["«Entonces lo más importante para ti es tener un inglés seguro para esas solicitudes, y estudiar dos o tres veces por semana te va bien. ¿Es así?»",
+          "«Genial. Te enseño nuestros precios. Así ves qué encaja en tu presupuesto.»",
+          "«Ahora te explico todos los cursos diferentes que tenemos en Wall Street English.»"],
+    fbs:["Bien. Le has repetido su objetivo. Has pedido un pequeño «sí». Esto es un cierre parcial. Hace que el último paso sea mucho más fácil.",
+         "Demasiado rápido. Has ido directo al precio. Primero repite aquello en lo que estáis de acuerdo. Luego muestra el valor. El precio va al final.",
+         "Esto va de los cursos, no de Jill. Habla primero de su objetivo. Así el curso parece hecho para ella."]},
+   {lines:["¡Sí, exacto! Solo quiero sentirme segura antes de enviar las solicitudes."],
+    situation:"Jill está en el nivel 6. Su objetivo es mucho más alto. Tienes una opción de 9 meses y otra de 12 meses.",
+    prompt:"¿Cómo le enseñas el curso?",
+    tag:"Da siempre dos opciones. Una alcanza su objetivo. Otra es un buen comienzo. Ahora Jill puede elegir.",
+    opts:["«Tengo dos buenas opciones para ti. El curso de 12 meses te lleva hasta tu objetivo. El de 9 meses es un buen comienzo sobre el que puedes construir. Los dos te dan mucha práctica de conversación y todo nuestro apoyo.»",
+          "«El curso Full-Access de 12 meses es el único que funciona para tu objetivo, así que vamos con ese.»",
+          "«Tenemos online, en centro, full-access y muchas duraciones. ¿Cuál prefieres?»"],
+    fbs:["Muy bien. Dos opciones dejan elegir a Jill. Y las dos llevan a empezar hoy.",
+         "Una sola opción parece presión. Da dos opciones. Así Jill siente que es ella quien elige.",
+         "Demasiadas opciones, y no la has ayudado. El experto eres tú. Di cuál es la mejor opción y añade una más."]},
+   {lines:["«El curso Full-Access de 12 meses incluye las clases reducidas con profesor, las Complementary Conversation Classes, los Social Clubs, tu Coach y los profesores, y todos tus materiales.»",
+           "Ah, la verdad es que suena muy bien. ¿Puedo preguntar cuánto cuesta?"],
+    situation:"Le has contado los beneficios. Ahora presentas la inversión completa. Observa su reacción y los cambios en el lenguaje corporal.",
+    prompt:"Acabas de presentar el precio. ¿Qué haces ahora?",
+    tag:"Después de presentar el precio, quédate en silencio. Deja pensar a Jill. Quien habla primero suele perder.",
+    opts:["Habla de la inversión completa una sola vez. Mírala con calma. Luego quédate en silencio y espera a que hable Jill.",
+          "Presenta el precio y añade enseguida: «pero este mes tenemos una promoción, así que puede salir más barato».",
+          "Presenta el precio. Luego habla enseguida de los planes de pago, para que no haya ningún silencio."],
+    say:"«Para el curso de 12 meses, con todo incluido, será una inversión de 2.000 $.» (Miras a Jill con calma y esperas.)",
+    fbs:["Sí. El momento de silencio deja que Jill piense en el valor. Palabras de más o un descuento hacen que el precio parezca débil.",
+         "Demasiado pronto. Nunca hables de descuentos antes de que Jill acepte el precio completo. Parece que no creemos en nuestros precios.",
+         "Has llenado el silencio. Jill lo necesita para pensar. Habla de la inversión, luego para y espera."]},
+   {lines:["Ya... vale. Tengo que ser sincera contigo, para mí es mucho dinero. Es una decisión importante."],
+    situation:"Jill está pensando en el dinero. Ahora demuéstrale que no hay riesgo.",
+    prompt:"¿Qué dices?",
+    tag:"Aplica los Tres Pasos Mágicos y usa la garantía. Le demuestra a Jill que está segura. Para ella no hay riesgo.",
+    opts:["«Lo entiendo, es una decisión importante y una inversión importante. Cuando dices mucho dinero, ¿a qué te refieres exactamente? ¿Es asumible? Precisamente por eso te damos una garantía por escrito. Sigue el método y, si no alcanzas tu objetivo, te devolvemos el dinero. Tú nos das el tiempo, y nosotros te llevamos hasta allí.»",
+          "«Sí, es caro, pero el inglés es muy importante para tu futuro, así que merece la pena.»",
+          "«Si el precio es un problema puedo hacerte un 20% de descuento ahora mismo.»"],
+    fbs:["Muy bien. Buen uso de los Tres Pasos Mágicos, y la garantía le demuestra a Jill que el resultado es seguro. Ahora el dinero parece menos arriesgado.",
+         "Has admitido que es «caro» y luego has presionado. Eso no la hace sentir segura. Usa los Tres Pasos Mágicos y la garantía.",
+         "Solo se ha parado a pensar y tú has bajado el precio. Ahora el precio real parece injusto. Usa primero la garantía."]},
+   {lines:["Ah, ¿hay una garantía? Vale, eso me tranquiliza bastante."],
+    situation:"Jill se siente más segura ahora. Pídele que empiece. No hagas una pregunta de sí o no.",
+    prompt:"¿Cómo le pides que empiece?",
+    tag:"Usa un cierre alternativo. Dale a Jill dos opciones, no «sí» o «no».",
+    opts:["«¿Cuándo te gustaría empezar — esta semana o la que viene?»",
+          "«Entonces, ¿quieres matricularte hoy en el curso?»",
+          "«Tómate todo el tiempo que necesites y avísame cuando lo hayas decidido.»"],
+    fbs:["Bien. Las dos respuestas significan «sí». Ahora empezar parece el siguiente paso natural.",
+         "Una pregunta de sí/no le da a Jill una forma fácil de decir que no. Pregunta «cuándo», no «si».",
+         "Esto lo detiene todo. Sabes que este curso es el adecuado para ella. Ayúdala a dar el siguiente paso."]},
+   {lines:["Hay una cosa, eso sí. ¿Y si no me gusta una vez que empiece? El año pasado me apunté a un gimnasio y al mes dejé de ir. Siempre acabo perdiendo el interés."],
+    situation:"Esto es una objeción. Usa el primero de los Tres Pasos Mágicos.",
+    prompt:"Paso 1 — ¿qué dices primero?",
+    tag:"Paso 1: Aceptar y Respetar. Demuéstrale que la duda es normal. No discutas con ella.",
+    opts:["«Lo entiendo, y gracias por ser tan sincera conmigo. Muchos de nuestros estudiantes sienten exactamente lo mismo al principio.»",
+          "«No te preocupes, eso aquí no va a pasar. Nuestro curso es completamente distinto de un gimnasio.»",
+          "«Si dejas de venir, la responsabilidad es tuya, no nuestra.»"],
+    fbs:["Sí. Este es el Paso 1, Aceptar y Respetar. Te has tomado en serio lo que siente y no has discutido. Ahora puedes preguntar más.",
+         "Has saltado a la respuesta. Primero acepta la duda. Luego pregunta sobre ella. Luego trátala.",
+         "Esto hace que Jill se sienta culpada y pierdes su confianza. Acepta primero lo que siente."]},
+   {lines:["Gracias por decir eso. Creo que en realidad el problema soy yo, no vuestro curso."],
+    situation:"Has aceptado lo que siente. Ahora averigua cuál es la duda real.",
+    prompt:"Paso 2 — ¿qué pregunta haces?",
+    tag:"Paso 2: Preguntar y Comprender. Haz una pregunta abierta. Así Jill explicará más.",
+    opts:["«¿Puedo preguntarte qué te hace sentir así? Me gustaría entenderlo de verdad, para poder ayudarte.»",
+          "«¿Entonces es el precio lo que de verdad te preocupa?»",
+          "«¿Crees que volverás a perder el interés? ¿Sí o no?»"],
+    fbs:["Esa es una pregunta abierta. Ahora Jill puede explicarse. Su duda es sobre ella misma, no sobre el método.",
+         "Esta es una pregunta cerrada, y has adivinado la duda equivocada. Haz una pregunta abierta y deja que Jill te lo cuente.",
+         "Una pregunta de sí o no corta la conversación. Pregunta «¿qué te hace sentir así?» para encontrar la duda real."]},
+   {lines:["En el gimnasio nadie se daba cuenta de si iba o no. Así que perdí el interés y al final lo dejé."],
+    situation:"Ahora conoces la duda real. Jill está preocupada por sí misma. No es el método ni el precio.",
+    prompt:"Paso 3 — ¿cómo tratas esta objeción?",
+    tag:"Paso 3: Trata la objeción real. Jill duda de sí misma. Así que habla de apoyo, no de dinero.",
+    opts:["«Tiene todo el sentido. Aquí funciona de otra manera. Yo soy tu Consultora, así que nos veremos con regularidad. Tu Coach y los profesores siguen tu progreso y te dan feedback. Aquí nunca estás sola, y así es como nos aseguramos de que alcances tu objetivo.»",
+          "«Recuerda que tenemos la garantía de devolución, así que no tienes nada que perder.»",
+          "«A todo el mundo le pasa a veces. Vamos a firmar el contrato y ya veremos cómo va.»"],
+    fbs:["Excelente. Jill estaba preocupada por sí misma. Has respondido con el apoyo que va a tener. Así se trata la objeción real.",
+         "La garantía responde a una duda de dinero. La duda de Jill es sobre ella misma. Responde con apoyo en su lugar.",
+         "Has ignorado su duda real. Muéstrale el apoyo que va a tener. Después pídele que empiece."]},
+   {lines:["Vale, eso ayuda mucho. Creo que quiero hacerlo... solo que no estoy segura entre los 9 meses o los 12 meses y tendré que pensarlo."],
+    situation:"Escucha con atención. Esto no es una objeción.",
+    prompt:"¿Qué es esto y qué haces?",
+    tag:"Esto es una señal de compra. Jill ya ha decidido estudiar. Solo necesita ayuda para elegir. Ayúdala y pídele que empiece.",
+    opts:["«Buena pregunta, y parece que estás lista para empezar. Tu objetivo son esas solicitudes a la universidad, así que el curso de 12 meses es el que te lleva hasta el final y se asegura de que tengas confianza. Te propongo que empecemos con ese.»",
+          "«Sin problema, tómate tu tiempo para pensar cuál prefieres y llámame cuando lo decidas.»",
+          "«Los dos están bien, de verdad que da igual, elige el que quieras.»"],
+    fbs:["Perfecto. Has oído la señal de compra. La has ayudado a elegir la opción correcta. Y luego le has pedido que empiece.",
+         "Se te ha escapado la señal de compra. Jill ya había decidido estudiar. Ayúdala a elegir ahora. No la mandes a casa, está lista para cerrar.",
+         "Una señal de compra necesita tu ayuda. Explica qué opción la ayuda a alcanzar su objetivo. Después pídele que empiece."]}
+  ]
+},
+/* --------------------------------------------------------------- Français */
+fr:{
+  lang:"fr",
+  fs:{ enter:"Plein écran", exit:"Quitter le plein écran", newtab:"Ouvrir dans un nouvel onglet", hint:"Appuyez sur F11 pour remplir l'écran" },
+  eyebrow:"Solution, conclusion et objections · Pratique",
+  title:"Le rendez-vous de Jill — c'est vous la Conseillère",
+  intro:"Vous avez terminé l'analyse des besoins. Montrez maintenant à Jill le bon cours. Puis proposez-lui de commencer. Si elle a un doute, traitez-le. À chaque étape, c'est vous qui choisissez quoi dire.",
+  persona:"<b>Jill · Étudiante · 23 ans</b><br><b>Son objectif :</b> étudier dans une grande université aux États-Unis<br><b>Son niveau actuel :</b> 6. Elle veut parler et écrire avec assurance.<br><b>Son temps :</b> elle peut étudier 2 ou 3 fois par semaine<br><b>Son point sensible :</b> elle a échoué à deux examens. Elle est déçue et a perdu espoir.<br><b>Ses options :</b> Full-Access. A : 9 mois. B : 12 mois.<br><b>Remarque :</b> elle habite loin du Centre. Elle vient souvent en ville.",
+  setupHeading:"Avant de commencer", startBtn:"Commencer le rendez-vous ▸",
+  sceneNote:"À vous. Parlez avec Jill et concluez la vente.",
+  warmthName:"Confiance et lien", you:"Vous", jill:"Jill",
+  correctTag:"✓ Bien joué", rethinkTag:"Reprenons cela",
+  continue:"Continuer", tryAgain:"Essayer une autre réponse",
+  finishBtn:"Voir vos résultats ▸", restartBtn:"Réessayer",
+  recapTitle:"Ce que vous venez de pratiquer",
+  finalBadge:"★", finalTitle:"Rendez-vous terminé",
+  codeLabel:"Code de validation", code:"SOLUTION-4080",
+  endGood:"Vous avez donné à Jill deux options claires. Vous êtes resté calme en présentant le prix. Vous avez utilisé la garantie. Vous avez trouvé son vrai doute et l'avez traité avec les Trois Étapes Magiques. C'est ainsi que l'on conclut davantage de ventes.",
+  steps:["Reformuler","Donner un choix","Présenter le prix","La garantie","Proposer de commencer","Traiter l'objection","Signal d'achat"],
+  recap:[
+    "Conclusion partielle : reformulez ce sur quoi vous êtes d'accord et obtenez un « oui ».",
+    "Donnez toujours deux options : l'une atteint l'objectif, l'autre est un bon début.",
+    "Présentez le prix calmement. Utilisez le mot « investissement ». Puis gardez le silence.",
+    "Utilisez la garantie pour montrer qu'il n'y a aucun risque.",
+    "Posez une question à deux choix, pas une question par oui ou non.",
+    "Trois Étapes Magiques : Accepter &amp; Respecter → Questionner &amp; Comprendre → Traiter.",
+    "Un signal d'achat n'est pas une objection. Aidez Jill à choisir, puis proposez-lui de commencer."
+  ],
+  steps_text:[
+   {lines:["Donc voilà, c'est à peu près ma situation. J'ai échoué à ces deux examens à cause de mon niveau d'anglais, mais j'aimerais vraiment beaucoup étudier aux États-Unis l'an prochain. Je vais candidater de nouveau l'an prochain."],
+    situation:"Vous savez tout de Jill maintenant. Faites une chose avant de lui montrer un cours.",
+    prompt:"Que dites-vous en premier ?",
+    tag:"Conclusion partielle : reformulez ce sur quoi vous êtes d'accord. Puis obtenez un « oui » de plus avant de continuer.",
+    opts:["« Donc le plus important pour vous, c'est un anglais sûr pour ces candidatures, et étudier deux ou trois fois par semaine vous convient bien. C'est bien cela ? »",
+          "« Parfait. Je vais vous montrer nos tarifs. Vous verrez ce qui correspond à votre budget. »",
+          "« Je vais maintenant vous expliquer tous les cours différents que nous avons chez Wall Street English. »"],
+    fbs:["Bien. Vous avez reformulé son objectif. Vous avez demandé un petit « oui ». C'est une conclusion partielle. Cela rend la dernière étape bien plus facile.",
+         "Trop vite. Vous êtes allé droit au prix. Reformulez d'abord ce sur quoi vous êtes d'accord. Puis montrez la valeur. Le prix vient en dernier.",
+         "Là, on parle des cours, pas de Jill. Parlez d'abord de son objectif. Le cours paraîtra alors fait pour elle."]},
+   {lines:["Oui, exactement ! Je veux juste me sentir sûre de moi avant d'envoyer mes candidatures."],
+    situation:"Jill est au niveau 6. Son objectif est bien plus haut. Vous avez une option 9 mois et une option 12 mois.",
+    prompt:"Comment lui présentez-vous le cours ?",
+    tag:"Donnez toujours deux options. L'une atteint son objectif. L'autre est un bon début. Maintenant Jill peut choisir.",
+    opts:["« J'ai deux bonnes options pour vous. Le cours de 12 mois vous mène jusqu'à votre objectif. Celui de 9 mois est un début solide sur lequel construire. Les deux vous donnent beaucoup de pratique orale et tout notre accompagnement. »",
+          "« Le cours Full-Access de 12 mois est le seul qui fonctionne pour votre objectif, alors partons là-dessus. »",
+          "« Nous avons de l'en ligne, du présentiel, du full-access et beaucoup de durées. Que préférez-vous ? »"],
+    fbs:["Très bien. Deux options laissent Jill choisir. Et les deux mènent à commencer aujourd'hui.",
+         "Une seule option ressemble à de la pression. Donnez deux options. Jill sent alors que c'est elle qui choisit.",
+         "Trop de choix, et vous ne l'avez pas aidée. L'experte, c'est vous. Dites quelle option est la meilleure et ajoutez-en une."]},
+   {lines:["« Le cours Full-Access de 12 mois comprend les petits groupes avec professeur, les Complementary Conversation Classes, les Social Clubs, votre Coach et les professeurs, et tous vos supports. »",
+           "Ah, cela a vraiment l'air bien. Puis-je vous demander combien cela coûte ?"],
+    situation:"Vous lui avez présenté les bénéfices. Vous présentez maintenant l'investissement complet. Observez sa réaction et les changements dans son langage corporel.",
+    prompt:"Vous venez de présenter le prix. Que faites-vous ensuite ?",
+    tag:"Après avoir présenté le prix, gardez le silence. Laissez Jill réfléchir. Celui qui parle le premier perd souvent.",
+    opts:["Annoncez l'investissement complet une seule fois. Regardez-la calmement. Puis gardez le silence et attendez que Jill parle.",
+          "Présentez le prix, puis ajoutez aussitôt : « mais nous avons une promotion ce mois-ci, cela peut donc coûter moins cher ».",
+          "Présentez le prix. Puis parlez tout de suite des facilités de paiement, pour qu'il n'y ait aucun silence."],
+    say:"« Pour le cours de 12 mois, tout compris, ce sera un investissement de 2 000 $. » (Vous regardez Jill calmement, puis vous attendez.)",
+    fbs:["Oui. Le moment de silence laisse Jill penser à la valeur. Des mots en trop ou une remise affaiblissent le prix.",
+         "Trop tôt. Ne parlez jamais de remise avant que Jill n'accepte le prix complet. Cela donne l'impression que nous ne croyons pas à nos prix.",
+         "Vous avez comblé le silence. Jill en a besoin pour réfléchir. Annoncez l'investissement, puis arrêtez-vous et attendez."]},
+   {lines:["D'accord... bon. Je dois être honnête avec vous, cela fait beaucoup d'argent pour moi. C'est une grande décision."],
+    situation:"Jill pense à l'argent. Montrez-lui maintenant qu'il n'y a aucun risque.",
+    prompt:"Que dites-vous ?",
+    tag:"Appliquez les Trois Étapes Magiques et utilisez la garantie. Cela montre à Jill qu'elle est en sécurité. Il n'y a aucun risque pour elle.",
+    opts:["« Je comprends, c'est une grande décision et un investissement important. Quand vous dites beaucoup d'argent, qu'entendez-vous exactement ? Est-ce faisable ? C'est précisément pour cela que nous vous donnons une garantie écrite. Suivez la méthode et, si vous n'atteignez pas votre objectif, nous vous remboursons. Vous nous donnez le temps, et nous vous y menons. »",
+          "« Oui, c'est cher, mais l'anglais est très important pour votre avenir, donc cela en vaut la peine. »",
+          "« Si le prix pose problème, je peux vous faire 20 % de remise tout de suite. »"],
+    fbs:["Solide. Bon usage des Trois Étapes Magiques, et la garantie montre à Jill que le résultat est sûr et certain. L'argent paraît maintenant moins risqué.",
+         "Vous avez reconnu que c'est « cher », puis vous l'avez poussée. Cela ne la rassure pas. Utilisez les Trois Étapes Magiques et la garantie.",
+         "Elle s'est simplement arrêtée pour réfléchir, et vous avez baissé le prix. Le vrai prix paraît maintenant injuste. Utilisez d'abord la garantie."]},
+   {lines:["Ah, il y a une garantie ? D'accord, cela me rassure beaucoup."],
+    situation:"Jill se sent plus en confiance. Proposez-lui de commencer. Ne posez pas de question par oui ou non.",
+    prompt:"Comment lui proposez-vous de commencer ?",
+    tag:"Utilisez une conclusion alternative. Donnez à Jill deux choix, pas « oui » ou « non ».",
+    opts:["« Quand souhaiteriez-vous commencer — cette semaine ou la semaine prochaine ? »",
+          "« Alors, souhaitez-vous vous inscrire au cours aujourd'hui ? »",
+          "« Prenez tout le temps qu'il vous faut et dites-moi quand vous aurez décidé. »"],
+    fbs:["Bien. Les deux réponses veulent dire « oui ». Commencer devient l'étape suivante naturelle.",
+         "Une question par oui/non donne à Jill un moyen facile de dire non. Demandez « quand », pas « si ».",
+         "Cela arrête tout. Vous savez que ce cours lui convient. Aidez-la à franchir l'étape suivante."]},
+   {lines:["Il y a juste une chose. Et si cela ne me plaît pas une fois commencé ? L'an dernier je me suis inscrite à une salle de sport et au bout d'un mois j'ai arrêté d'y aller. J'ai l'impression de toujours perdre l'intérêt."],
+    situation:"C'est une objection. Utilisez la première des Trois Étapes Magiques.",
+    prompt:"Étape 1 — que dites-vous en premier ?",
+    tag:"Étape 1 : Accepter et Respecter. Montrez-lui que ce doute est normal. Ne le contestez pas.",
+    opts:["« Je comprends, et merci d'être aussi franche avec moi. Beaucoup de nos étudiants ressentent exactement la même chose au début. »",
+          "« Ne vous inquiétez pas, cela n'arrivera pas ici. Notre cours n'a rien à voir avec une salle de sport. »",
+          "« Si vous arrêtez de venir, c'est votre responsabilité, pas la nôtre. »"],
+    fbs:["Oui. C'est l'Étape 1, Accepter et Respecter. Vous avez pris son ressenti au sérieux et vous n'avez pas contesté. Vous pouvez maintenant en demander plus.",
+         "Vous avez sauté à la réponse. Acceptez d'abord le doute. Puis posez des questions. Puis traitez-le.",
+         "Jill se sent accusée et vous perdez sa confiance. Acceptez d'abord ce qu'elle ressent."]},
+   {lines:["Merci de dire cela. Je crois que c'est vraiment moi qui m'inquiète, pas votre cours."],
+    situation:"Vous avez accepté son ressenti. Découvrez maintenant quel est le vrai doute.",
+    prompt:"Étape 2 — quelle question posez-vous ?",
+    tag:"Étape 2 : Questionner et Comprendre. Posez une question ouverte. Jill en dira alors davantage.",
+    opts:["« Puis-je vous demander ce qui vous fait ressentir cela ? J'aimerais vraiment comprendre, pour pouvoir vous aider. »",
+          "« C'est donc le prix qui vous inquiète vraiment ? »",
+          "« Pensez-vous que vous allez encore perdre l'intérêt ? Oui ou non ? »"],
+    fbs:["Voilà une question ouverte. Jill peut maintenant s'expliquer. Son doute porte sur elle-même, pas sur la méthode.",
+         "C'est une question fermée, et vous avez deviné le mauvais doute. Posez une question ouverte et laissez Jill vous le dire.",
+         "Une question par oui ou non coupe la conversation. Demandez « qu'est-ce qui vous fait ressentir cela ? » pour trouver le vrai doute."]},
+   {lines:["À la salle de sport, personne ne remarquait si je venais ou non. J'ai donc perdu l'intérêt et j'ai fini par abandonner."],
+    situation:"Vous connaissez maintenant le vrai doute. Jill s'inquiète pour elle-même. Ce n'est ni la méthode ni le prix.",
+    prompt:"Étape 3 — comment traitez-vous cette objection ?",
+    tag:"Étape 3 : Traitez la vraie objection. Jill doute d'elle-même. Parlez donc d'accompagnement, pas d'argent.",
+    opts:["« Cela se comprend tout à fait. Ici, cela fonctionne autrement. Je suis votre Conseillère, nous nous verrons donc régulièrement. Votre Coach et les professeurs suivent vos progrès et vous donnent du feedback. Ici vous n'êtes jamais seule, et c'est ainsi que nous nous assurons que vous atteignez votre objectif. »",
+          "« N'oubliez pas que nous avons la garantie satisfait ou remboursé, vous n'avez donc rien à perdre. »",
+          "« Tout le monde ressent cela parfois. Signons le contrat et nous verrons bien. »"],
+    fbs:["Excellent. Jill s'inquiétait pour elle-même. Vous avez répondu par l'accompagnement dont elle bénéficiera. C'est ainsi que l'on traite la vraie objection.",
+         "La garantie répond à un doute sur l'argent. Le doute de Jill porte sur elle-même. Répondez plutôt par l'accompagnement.",
+         "Vous avez ignoré son vrai doute. Montrez-lui l'accompagnement dont elle bénéficiera. Puis proposez-lui de commencer."]},
+   {lines:["D'accord, cela m'aide vraiment. Je crois que je veux le faire... je ne suis simplement pas sûre entre les 9 mois et les 12 mois et je vais devoir y réfléchir."],
+    situation:"Écoutez attentivement. Ce n'est pas une objection.",
+    prompt:"Qu'est-ce que c'est, et que faites-vous ?",
+    tag:"C'est un signal d'achat. Jill a décidé d'étudier. Elle a seulement besoin d'aide pour choisir. Aidez-la, puis proposez-lui de commencer.",
+    opts:["« Bonne question, et vous semblez prête à commencer. Votre objectif, ce sont ces candidatures universitaires, donc le cours de 12 mois est celui qui vous mène jusqu'au bout et qui vous rendra sûre de vous. Je vous propose de démarrer sur celui-là. »",
+          "« Pas de souci, prenez le temps de réfléchir à celui que vous préférez et appelez-moi quand vous aurez décidé. »",
+          "« Les deux conviennent, cela n'a vraiment aucune importance, prenez celui que vous voulez. »"],
+    fbs:["Parfait. Vous avez entendu le signal d'achat. Vous l'avez aidée à choisir la bonne option. Puis vous lui avez proposé de commencer.",
+         "Vous avez manqué le signal d'achat. Jill avait déjà décidé d'étudier. Aidez-la à choisir maintenant. Ne la renvoyez pas chez elle, elle est prête à conclure.",
+         "Un signal d'achat a besoin de votre aide. Expliquez quelle option l'aide à atteindre son objectif. Puis proposez-lui de commencer."]}
+  ]
+},
+
+/* ----------------------------------------------------------------- العربية */
+ar:{
+  lang:"ar",
+  fs:{ enter:"ملء الشاشة", exit:"إنهاء ملء الشاشة", newtab:"فتح في تبويب جديد", hint:"اضغط F11 لملء الشاشة" },
+  eyebrow:"الحل والإغلاق والاعتراضات · تدريب",
+  title:"موعد جيل — أنت المستشار",
+  intro:"لقد أنهيت تحليل الاحتياجات. الآن اعرض على جيل الدورة المناسبة. ثم اطلب منها أن تبدأ. وإن كان لديها شك، عالجه. في كل خطوة أنت من يختار ما يقال.",
+  persona:"<b>جيل · طالبة جامعية · ٢٣ سنة</b><br><b>هدفها:</b> الدراسة في جامعة مرموقة في الولايات المتحدة<br><b>مستواها الآن:</b> ٦. تريد أن تتحدث وتكتب بثقة.<br><b>وقتها:</b> تستطيع الدراسة مرتين أو ثلاث مرات أسبوعيًا<br><b>نقطتها الحساسة:</b> رسبت في اختبارين. تشعر بالإحباط وفقدت الأمل.<br><b>خياراتها:</b> Full-Access. أ: ٩ أشهر. ب: ١٢ شهرًا.<br><b>ملاحظة:</b> تسكن بعيدًا عن المركز، لكنها تأتي إلى المدينة كثيرًا.",
+  setupHeading:"قبل أن تبدأ", startBtn:"ابدأ الموعد ◂",
+  sceneNote:"دورك الآن. تحدّث مع جيل وأتمم البيع.",
+  warmthName:"الثقة والتقارب", you:"أنت", jill:"جيل",
+  correctTag:"✓ خطوة موفّقة", rethinkTag:"لنعد التفكير",
+  continue:"متابعة", tryAgain:"جرّب إجابة أخرى",
+  finishBtn:"اعرض نتائجك ◂", restartBtn:"حاول مرة أخرى",
+  recapTitle:"ما تدرّبت عليه للتو",
+  finalBadge:"★", finalTitle:"اكتمل الموعد",
+  codeLabel:"رمز الإتمام", code:"SOLUTION-4080",
+  endGood:"أعطيت جيل خيارين واضحين. وبقيت هادئًا عند عرض السعر. واستخدمت الضمان. ووجدت شكّها الحقيقي وعالجته بالخطوات السحرية الثلاث. هكذا تُتمّ مبيعات أكثر.",
+  steps:["أعد الصياغة","اعرض خيارين","اعرض السعر","الضمان","اطلب البدء","عالج الاعتراض","إشارة الشراء"],
+  recap:[
+    "إغلاق جزئي: أعد صياغة ما اتفقتما عليه واحصل على «نعم».",
+    "اعرض دائمًا خيارين: أحدهما يحقق الهدف، والآخر بداية جيدة.",
+    "اعرض السعر بهدوء. استخدم كلمة «استثمار». ثم التزم الصمت.",
+    "استخدم الضمان لتُظهر أنه لا توجد أي مخاطرة.",
+    "اطرح سؤالًا بخيارين، لا سؤالًا بنعم أو لا.",
+    "الخطوات السحرية الثلاث: تقبّل واحترم ← اسأل وافهم ← عالج.",
+    "إشارة الشراء ليست اعتراضًا. ساعد جيل على الاختيار ثم اطلب منها أن تبدأ."
+  ],
+  steps_text:[
+   {lines:["نعم، هذا تقريبًا وضعي. رسبت في ذينك الاختبارين بسبب مستواي في الإنجليزية، لكنني ما زلت أرغب حقًا في الدراسة في الولايات المتحدة العام القادم. سأتقدّم بطلب مرة أخرى العام القادم."],
+    situation:"أنت تعرف كل شيء عن جيل الآن. افعل شيئًا واحدًا قبل أن تعرض عليها أي دورة.",
+    prompt:"بماذا تبدأ؟",
+    tag:"إغلاق جزئي: أعد صياغة ما اتفقتما عليه. ثم احصل على «نعم» أخرى قبل أن تكمل.",
+    opts:["«إذن الأهم بالنسبة لكِ هو إنجليزية واثقة من أجل تلك الطلبات، والدراسة مرتين أو ثلاثًا في الأسبوع تناسبكِ. هل هذا صحيح؟»",
+          "«ممتاز. دعيني أعرض عليكِ أسعارنا. عندها ترين ما يناسب ميزانيتكِ.»",
+          "«سأشرح لكِ الآن كل الدورات المختلفة التي لدينا في Wall Street English.»"],
+    fbs:["جيد. أعدت صياغة هدفها، وطلبت «نعم» صغيرة. هذا إغلاق جزئي، وهو يجعل الخطوة الأخيرة أسهل بكثير.",
+         "سريع جدًا. ذهبت مباشرة إلى السعر. أعد أولًا صياغة ما اتفقتما عليه، ثم اعرض القيمة. السعر يأتي في النهاية.",
+         "هذا حديث عن الدورات لا عن جيل. تحدّث أولًا عن هدفها، عندها تبدو الدورة وكأنها مصمّمة لها."]},
+   {lines:["نعم، بالضبط! أريد فقط أن أشعر بالثقة قبل أن أرسل طلباتي."],
+    situation:"جيل في المستوى ٦، وهدفها أعلى من ذلك بكثير. لديك خيار من ٩ أشهر وخيار من ١٢ شهرًا.",
+    prompt:"كيف تعرض عليها الدورة؟",
+    tag:"اعرض دائمًا خيارين. أحدهما يحقق هدفها، والآخر بداية جيدة. الآن تستطيع جيل أن تختار.",
+    opts:["«لديّ خياران جيدان لكِ. دورة الاثني عشر شهرًا تأخذكِ حتى هدفكِ. ودورة التسعة أشهر بداية قوية يمكنكِ البناء عليها. وكلاهما يمنحكِ الكثير من التدريب على التحدث ودعمنا الكامل.»",
+          "«دورة Full-Access لاثني عشر شهرًا هي الوحيدة التي تناسب هدفكِ، فلنمضِ بها.»",
+          "«لدينا دورات عبر الإنترنت، وفي المركز، وFull-Access، وبمدد كثيرة. أيها تفضّلين؟»"],
+    fbs:["أحسنت. الخياران يتركان لجيل حرية الاختيار، وكلاهما يؤدي إلى البدء اليوم.",
+         "الخيار الواحد يبدو وكأنه ضغط. اعرض خيارين، عندها تشعر جيل أنها هي من تختار.",
+         "خيارات كثيرة جدًا، ولم تساعدها. أنت الخبير. حدّد الخيار الأفضل ثم أضف خيارًا آخر."]},
+   {lines:["«دورة Full-Access لاثني عشر شهرًا تشمل الصفوف الصغيرة مع المعلم، وحصص المحادثة التكميلية، والنوادي الاجتماعية، ومدربكِ ومعلميكِ، وكل موادكِ الدراسية.»",
+           "أوه، هذا يبدو جيدًا فعلًا. هل لي أن أسأل كم التكلفة؟"],
+    situation:"لقد عرضت عليها الفوائد. الآن تعرض الاستثمار كاملًا. راقب ردّ الفعل والتغيّر في لغة الجسد.",
+    prompt:"لقد عرضت السعر للتو. ماذا تفعل بعد ذلك؟",
+    tag:"بعد عرض السعر، التزم الصمت. اترك لجيل فرصة التفكير. من يتكلم أولًا يخسر غالبًا.",
+    opts:["اذكر الاستثمار كاملًا مرة واحدة. انظر إليها بهدوء. ثم التزم الصمت وانتظر أن تتحدث جيل.",
+          "اعرض السعر ثم أضف سريعًا: «لكن لدينا عرض هذا الشهر، لذا يمكن أن يكون أرخص».",
+          "اعرض السعر. ثم تحدّث فورًا عن خطط الدفع، حتى لا تكون هناك أي لحظة صمت."],
+    say:"«لدورة الاثني عشر شهرًا، شاملةً كل شيء، سيكون الاستثمار ٢٬٠٠٠ دولار.» (تنظر إلى جيل بهدوء ثم تنتظر.)",
+    fbs:["نعم. لحظة الصمت تتيح لجيل أن تفكر في القيمة. الكلمات الزائدة أو الخصم تُضعف السعر.",
+         "مبكر جدًا. لا تتحدث أبدًا عن خصم قبل أن تقبل جيل السعر كاملًا. هذا يوحي بأننا لا نؤمن بأسعارنا.",
+         "ملأت لحظة الصمت، وجيل تحتاجها للتفكير. اذكر الاستثمار ثم توقّف وانتظر."]},
+   {lines:["حسنًا... نعم. عليّ أن أكون صريحة معك، هذا مبلغ كبير بالنسبة لي. إنه قرار كبير."],
+    situation:"جيل تفكر في المال. الآن أظهر لها أنه لا توجد أي مخاطرة.",
+    prompt:"بماذا تردّ؟",
+    tag:"طبّق الخطوات السحرية الثلاث واستخدم الضمان. هذا يُظهر لجيل أنها في أمان، ولا مخاطرة عليها.",
+    opts:["«أتفهّم ذلك، إنه قرار كبير واستثمار كبير. حين تقولين مبلغ كبير، ماذا تقصدين تحديدًا؟ هل هو في المتناول؟ لهذا السبب بالذات نمنحكِ ضمانًا مكتوبًا. اتبعي الطريقة، وإن لم تصلي إلى هدفكِ نُعيد إليكِ أموالكِ. أنتِ تمنحيننا الوقت، ونحن نوصلكِ إلى هناك.»",
+          "«نعم، إنه غالٍ، لكن الإنجليزية مهمة جدًا لمستقبلكِ، لذا فهو يستحق.»",
+          "«إن كان السعر يمثل مشكلة، يمكنني أن أمنحكِ خصم ٢٠٪ الآن.»"],
+    fbs:["قوي. استخدام موفّق للخطوات السحرية الثلاث، والضمان يُظهر لجيل أن النتيجة آمنة ومؤكدة. الآن يبدو المال مخاطرة أقل.",
+         "وافقت على أنه «غالٍ» ثم ضغطت عليها. هذا لا يشعرها بالأمان. استخدم الخطوات السحرية الثلاث والضمان.",
+         "هي توقّفت للتفكير فحسب، فخفّضت السعر. الآن يبدو السعر الحقيقي غير عادل. استخدم الضمان أولًا."]},
+   {lines:["أوه، هناك ضمان؟ حسنًا، هذا يريحني كثيرًا."],
+    situation:"تشعر جيل بأمان أكبر الآن. اطلب منها أن تبدأ. ولا تطرح سؤالًا بنعم أو لا.",
+    prompt:"كيف تطلب منها أن تبدأ؟",
+    tag:"استخدم الإغلاق البديل. امنح جيل خيارين، لا «نعم» أو «لا».",
+    opts:["«متى تودّين أن تبدأي — هذا الأسبوع أم الأسبوع القادم؟»",
+          "«إذن، هل تودّين التسجيل في الدورة اليوم؟»",
+          "«خذي كل الوقت الذي تحتاجينه وأخبريني حين تقرّرين.»"],
+    fbs:["جيد. كلتا الإجابتين تعني «نعم». الآن يبدو البدء الخطوة التالية الطبيعية.",
+         "السؤال بنعم/لا يمنح جيل طريقة سهلة لترفض. اسأل «متى» لا «هل».",
+         "هذا يوقف كل شيء. أنت تعرف أن هذه الدورة مناسبة لها. ساعدها على الخطوة التالية."]},
+   {lines:["لكن هناك أمر واحد. ماذا لو لم تعجبني بعد أن أبدأ؟ اشتركت في نادٍ رياضي العام الماضي، وبعد شهر تقريبًا توقّفت عن الذهاب. يبدو أنني أفقد الاهتمام دائمًا."],
+    situation:"هذا اعتراض. استخدم أولى الخطوات السحرية الثلاث.",
+    prompt:"الخطوة ١ — بماذا تبدأ؟",
+    tag:"الخطوة ١: تقبّل واحترم. أظهر لها أن هذا الشك طبيعي، ولا تجادله.",
+    opts:["«أتفهّم ذلك، وأشكركِ على صراحتكِ معي. كثير من طلابنا يشعرون بالشيء نفسه تمامًا في البداية.»",
+          "«لا تقلقي، هذا لن يحدث هنا. دورتنا مختلفة تمامًا عن النادي الرياضي.»",
+          "«إن توقّفتِ عن الحضور، فهذه مسؤوليتكِ أنتِ لا مسؤوليتنا.»"],
+    fbs:["نعم. هذه هي الخطوة ١، تقبّل واحترم. أخذت شعورها على محمل الجد ولم تجادل. الآن يمكنك أن تسأل أكثر.",
+         "قفزت إلى الحل مباشرة. تقبّل الشك أولًا، ثم اسأل عنه، ثم عالجه.",
+         "هذا يُشعر جيل باللوم، وتفقد ثقتها. تقبّل شعورها أولًا."]},
+   {lines:["شكرًا لقولك هذا. أظن أن القلق منّي أنا في الحقيقة، لا من دورتكم."],
+    situation:"لقد تقبّلت شعورها. الآن اكتشف ما هو الشك الحقيقي.",
+    prompt:"الخطوة ٢ — أي سؤال تطرح؟",
+    tag:"الخطوة ٢: اسأل وافهم. اطرح سؤالًا مفتوحًا، عندها ستشرح جيل أكثر.",
+    opts:["«هل لي أن أسألكِ ما الذي يجعلكِ تشعرين بذلك؟ أودّ حقًا أن أفهم، حتى أستطيع المساعدة.»",
+          "«إذن السعر هو ما يقلقكِ فعلًا؟»",
+          "«هل تظنين أنكِ ستفقدين الاهتمام مرة أخرى؟ نعم أم لا؟»"],
+    fbs:["هذا سؤال مفتوح. الآن تستطيع جيل أن تشرح. شكّها يتعلق بنفسها لا بالطريقة.",
+         "هذا سؤال مغلق، وقد خمّنت الشك الخطأ. اطرح سؤالًا مفتوحًا ودع جيل تخبرك.",
+         "السؤال بنعم أو لا يوقف الحوار. اسأل «ما الذي يجعلكِ تشعرين بذلك؟» لتصل إلى الشك الحقيقي."]},
+   {lines:["في النادي الرياضي، لم يكن أحد يلاحظ إن حضرت أم لا. فقدت الاهتمام، وفي النهاية تركته."],
+    situation:"الآن تعرف الشك الحقيقي. جيل قلقة بشأن نفسها، لا بشأن الطريقة أو السعر.",
+    prompt:"الخطوة ٣ — كيف تعالج هذا الاعتراض؟",
+    tag:"الخطوة ٣: عالج الاعتراض الحقيقي. جيل تشك في نفسها، فتحدّث عن الدعم لا عن المال.",
+    opts:["«هذا منطقي تمامًا. الأمر هنا مختلف. أنا مستشارتكِ، وسنلتقي بانتظام. ومدربكِ ومعلموكِ يتابعون تقدّمكِ ويمنحونكِ ملاحظاتهم. لن تكوني وحدكِ هنا أبدًا، وبهذا نضمن أن تصلي إلى هدفكِ.»",
+          "«تذكّري أن لدينا ضمان استرداد الأموال، فليس لديكِ ما تخسرينه.»",
+          "«الجميع يشعر بذلك أحيانًا. لنوقّع العقد ونرى كيف تسير الأمور.»"],
+    fbs:["ممتاز. كانت جيل قلقة بشأن نفسها، فأجبتها بالدعم الذي ستحصل عليه. هكذا تُعالَج الاعتراضات الحقيقية.",
+         "الضمان يجيب عن شك يتعلق بالمال. أما شك جيل فيتعلق بنفسها. أجب بالدعم بدلًا من ذلك.",
+         "تجاهلت شكّها الحقيقي. أظهر لها الدعم الذي ستحصل عليه، ثم اطلب منها أن تبدأ."]},
+   {lines:["حسنًا، هذا يساعدني فعلًا. أظن أنني أريد المضي في هذا... لكنني غير متأكدة بين التسعة أشهر أو الاثني عشر شهرًا وسأحتاج إلى التفكير."],
+    situation:"أنصت جيدًا. هذا ليس اعتراضًا.",
+    prompt:"ما هذا، وماذا تفعل؟",
+    tag:"هذه إشارة شراء. جيل قرّرت أن تدرس، وهي تحتاج فقط إلى مساعدة في الاختيار. ساعدها ثم اطلب منها أن تبدأ.",
+    opts:["«سؤال جيد، ويبدو أنكِ مستعدة للبدء. هدفكِ هو طلبات الجامعة، لذا فدورة الاثني عشر شهرًا هي التي تأخذكِ حتى النهاية وتضمن أن تكوني واثقة. أقترح أن نبدأ بها.»",
+          "«لا مشكلة، خذي وقتكِ في التفكير في أيهما تفضّلين واتصلي بي حين تقرّرين.»",
+          "«كلتاهما جيدة، الأمر لا يهم حقًا، اختاري أيهما شئتِ.»"],
+    fbs:["ممتاز. التقطت إشارة الشراء، وساعدتها على اختيار الخيار الصحيح، ثم طلبت منها أن تبدأ.",
+         "فاتتك إشارة الشراء. جيل قرّرت الدراسة بالفعل. ساعدها على الاختيار الآن. لا ترسلها إلى بيتها، فهي جاهزة للإتمام.",
+         "إشارة الشراء تحتاج إلى مساعدتك. اشرح أي خيار يساعدها على بلوغ هدفها، ثم اطلب منها أن تبدأ."]}
+  ]
+}
+
+};
+
+const LANG_NAMES={en:"English",it:"Italiano",pt:"Português",es:"Español",fr:"Français",ar:"العربية"};
+const RTL=["ar"];
+
+function normalizeLang(l){
+  if(!l) return "en";
+  l=String(l).toLowerCase();
+  if(I18N[l]) return l;
+  const base=l.split("-")[0];
+  return I18N[base]?base:"en";
+}
+/* ?lang= wins, then the browser, then English. Switching reloads with a new
+   ?lang= rather than re-rendering in place — the role-play is stateful and a
+   half-swapped language is a worse bug than a reload. */
+const LANG=normalizeLang(new URLSearchParams(location.search).get("lang")||navigator.language);
+document.documentElement.lang=LANG;
+document.documentElement.dir=RTL.indexOf(LANG)>=0?"rtl":"ltr";
+
+const UI=I18N[LANG];
+/* rebuild the scenario the engine expects from shared structure + this
+   language's text. Scoring and the correct answer live in SHAPE, so they can
+   never drift between languages. */
+const SCENARIO=SHAPE.map((sh,i)=>{
+  const t=UI.steps_text[i];
+  return {
+    phase:sh.phase,
+    stepTag:sh.stepTag,
+    lines:sh.lines.map((l,j)=>({who:l.who,audio:l.audio,text:t.lines[j]})),
+    situation:t.situation, prompt:t.prompt, tag:t.tag,
+    options:t.opts.map((label,j)=>{
+      const o={correct:j===sh.correct, warmth:sh.warmth[j], text:label, fb:t.fbs[j]};
+      if(sh.say===j && t.say) o.say=t.say;
+      return o;
+    })
+  };
+});
 /* ===== engine =====
    Generic over UI + SCENARIO above — never hardcode copy down here.
 
@@ -661,6 +1335,19 @@ const SCENARIO = [
   addEventListener("resize", fitStage);
   syncFsLabel(); fitStage();
 
+
+  /* ----- language switcher ----- */
+  (function(){
+    const sel=document.getElementById("langsel"); if(!sel) return;
+    Object.keys(I18N).forEach(c=>{
+      const o=document.createElement("option");
+      o.value=c; o.textContent=LANG_NAMES[c]||c; if(c===LANG) o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change",()=>{
+      const u=new URL(location.href); u.searchParams.set("lang",sel.value); location.href=u.toString();
+    });
+  })();
   document.documentElement.lang = UI.lang || "en";
   renderWarmth(); renderSetup();
 })();
