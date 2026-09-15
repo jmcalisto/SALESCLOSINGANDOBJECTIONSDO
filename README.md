@@ -16,10 +16,10 @@ The seven phases follow the closing sequence taught in the module:
 
 1. Say it back (partial close)
 2. Give a choice (two options)
-3. Say the price (and stay quiet)
+3. Present the price (and stay quiet)
 4. The guarantee
 5. Ask to start (alternative close)
-6. Treat the doubt (Three Magic Steps)
+6. Treat the objection (Three Magic Steps)
 7. Buying signal
 
 ## Localization

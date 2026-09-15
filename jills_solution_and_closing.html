@@ -131,7 +131,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--paper);color:var(
     <h2>Appointment complete</h2>
     <p id="endMsg"></p>
     <div class="code" id="finalCode">SOLUTION-4080</div>
-    <div class="recap"><h3>What you just practised</h3><ul id="recapList"></ul></div>
+    <div class="recap"><h3>What you just practiced</h3><ul id="recapList"></ul></div>
     <div class="actions" style="justify-content:center;margin-top:22px"><button class="btn ghost" onclick="restart()">Try again</button></div>
   </div>
 
@@ -141,12 +141,12 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--paper);color:var(
 /* ===== UI (translate) ===== */
 const UI = {
   you:"You", jill:"Jill", situation:"Situation", continue:"Continue", correctTag:"✓ Good move", hearIt:"🔊",
-  endGood:"You gave Jill two clear options. You stayed calm when you said the price. You used the guarantee. You found her real doubt and treated it with the Three Magic Steps. This is how you close more sales.",
-  steps:["Say it back","Give a choice","Say the price","The guarantee","Ask to start","Treat the doubt","Buying signal"],
+  endGood:"You gave Jill two clear options. You stayed calm when you presented the price. You used the guarantee. You found her real doubt and treated it with the Three Magic Steps. This is how you close more sales.",
+  steps:["Say it back","Give a choice","Present the price","The guarantee","Ask to start","Treat the objection","Buying signal"],
   recap:[
-    "Partial close: say back what you agreed, and get a \u201cyes\u201d.",
+    "Partial close: Talk about what you both agree on, and get a \u201cyes\u201d.",
     "Always give two options: one reaches the goal, one is a good start.",
-    "Say the price calmly. Use the word \u201cinvestment\u201d. Then stay quiet.",
+    "Present the price calmly. Use the word \u201cinvestment\u201d. Then stay quiet.",
     "Use the guarantee to show there is no risk.",
     "Ask a question with two choices, not a yes or no question.",
     "Three Magic Steps: Accept &amp; Respect \u2192 Question &amp; Understand \u2192 Treat.",
@@ -160,14 +160,14 @@ const SCENARIO = [
     lines:[{who:"jill",audio:"j0",text:"So yes, that's pretty much my situation. I failed those two exams because of my level of English, but I would still really love to study in the United States next year. I am applying again next year."}],
     situation:"You know all about Jill now. Do one thing before you show her a course.",
     prompt:"What do you say first?",
-    tag:"Partial close: say back what you both agreed. Then get one more \u201cyes\u201d before you go on.",
+    tag:"Partial close: Talk about what you both agree on. Then get one more \u201cyes\u201d before you go on.",
     options:[
       {correct:true,warmth:+8,text:"\u201cSo the most important thing for you is confident English for those applications, and studying two or three times a week works well for you. Is that right?\u201d",
        fb:"Good. You said her goal back to her. You asked for a small \u201cyes\u201d. This is a partial close. It makes the last step much easier."},
       {correct:false,warmth:-6,text:"\u201cGreat. Let me show you our prices. Then you can see what fits your budget.\u201d",
        fb:"Too fast. You went straight to the price. First say back what you agreed. Then show the value. The price comes last."},
       {correct:false,warmth:-4,text:"\u201cNow I will explain all the different courses we have at Wall Street English.\u201d",
-       fb:"This is about the courses, not about Jill. Say her goal first. Then the course feels made for her."}
+       fb:"This is about the courses, not about Jill. Talk about her goal first. Then the course feels like it's made for her."}
     ]},
   { phase:1,
     lines:[{who:"jill",audio:"j1",text:"Yes, exactly! I just want to feel confident before I send off my applications."}],
@@ -184,31 +184,31 @@ const SCENARIO = [
     ]},
   { phase:2,
     lines:[
-      {who:"you",audio:"y2",text:"\u201cThe 12-month Full-Access course includes your Encounters, Complementary Classes, Social Clubs, your Coach and Teachers, and all your materials.\u201d"},
+      {who:"you",audio:"y2",text:"\u201cThe 12-month Full-Access course includes the small teacher classes, Complementary Conversation Classes, Social Clubs, your Coach and Teachers, and all your materials.\u201d"},
       {who:"jill",audio:"j2",text:"Oh, that actually sounds really good. Can I ask how much it is?"}
     ],
-    situation:"You told her the benefits. Now you say the full investment. Watch her face.",
-    prompt:"You have just said the price. What do you do next?",
-    tag:"After you say the price, stay quiet. Let Jill think. The first person to speak often loses.",
+    situation:"You told her the benefits. Now you present the full investment. Watch for reaction and changes in body language.",
+    prompt:"You have just presented the price. What do you do next?",
+    tag:"After you present the price, stay quiet. Let Jill think. The first person to speak often loses.",
     options:[
-      {correct:true,warmth:+9,text:"Say the full investment one time. Look at her calmly. Then stay quiet and wait for Jill to speak.",
-       say:"\u201cSo the full investment for the 12-month course is right here.\u201d (You look at Jill calmly, and then you wait.)",
+      {correct:true,warmth:+9,text:"Talk about the full investment one time. Look at her calmly. Then stay quiet and wait for Jill to speak.",
+       say:"\u201cFor the 12-month course, including everything, it will be an investment of $2,000.\u201d (You look at Jill calmly, and then you wait.)",
        fb:"Yes. The quiet moment lets Jill think about the value. Extra words or a discount make the price look weak."},
-      {correct:false,warmth:-6,text:"Say the price, then quickly add: \u201cbut we have a promotion this month, so it can be cheaper.\u201d",
-       fb:"Too soon. Never talk about a discount before Jill accepts the full price. It makes the real price look wrong."},
-      {correct:false,warmth:-4,text:"Say the price. Then talk about payment plans right away, so there is no quiet moment.",
-       fb:"You filled the quiet moment. Jill needs it to think. Say the investment, then stop and wait."}
+      {correct:false,warmth:-6,text:"Present the price, then quickly add: \u201cbut we have a promotion this month, so it can be cheaper.\u201d",
+       fb:"Too soon. Never talk about a discount before Jill accepts the full price. It makes it look like we don't believe in our prices."},
+      {correct:false,warmth:-4,text:"Present the price. Then talk about payment plans right away, so there is no quiet moment.",
+       fb:"You filled the quiet moment. Jill needs it to think. Talk about the investment, then stop and wait."}
     ]},
   { phase:3,
     lines:[{who:"jill",audio:"j3",text:"Right... okay. I have to be honest with you, that is a lot of money for me. It's a big decision."}],
     situation:"Jill is thinking about the money. Now show her there is no risk.",
     prompt:"What do you say?",
-    tag:"Use the guarantee. It shows Jill that she is safe. There is no risk for her.",
+    tag:"Apply the Three Magic Steps and use the guarantee. It shows Jill that she is safe. There is no risk for her.",
     options:[
-      {correct:true,warmth:+8,text:"\u201cI understand, it's a big decision. That's exactly why we give you a written guarantee. Follow the method, and if you don't reach your goal, we give your money back. You give us the time, and we take you there.\u201d",
-       fb:"Strong. The guarantee shows Jill the result is safe and sure. Now the money feels like less of a risk."},
+      {correct:true,warmth:+8,text:"\u201cI understand, it's a big decision and a big investment. When you say 'a lot of money', what exactly do you mean? Is it doable? That's exactly why we give you a written guarantee. Follow the method, and if you don't reach your goal, we give your money back. You give us the time, and we take you there.\u201d",
+       fb:"Strong. Good use of the Three Magic Steps, and the guarantee shows Jill the result is safe and sure. Now the money feels like less of a risk."},
       {correct:false,warmth:-5,text:"\u201cYes, it is expensive, but English is very important for your future, so it is worth it.\u201d",
-       fb:"You agreed it is \u201cexpensive\u201d, and then you pushed her. That does not make her feel safe. Use the guarantee."},
+       fb:"You agreed it is \u201cexpensive\u201d, and then you pushed her. That does not make her feel safe. Use the Three Magic Steps and the guarantee."},
       {correct:false,warmth:-6,text:"\u201cIf the price is a problem I can give you 20% off right now.\u201d",
        fb:"She only stopped to think, and you dropped the price. Now the real price looks unfair. Use the guarantee first."}
     ]},
@@ -265,17 +265,17 @@ const SCENARIO = [
        fb:"You ignored her real doubt. Show her the support she will get. Then ask her to start."}
     ]},
   { phase:6,
-    lines:[{who:"jill",audio:"j8",text:"Okay, that really does help. I think I want to do this... I'm just not sure about the 9 months or the 12 months."}],
+    lines:[{who:"jill",audio:"j8",text:"Okay, that really does help. I think I want to do this... I'm just not sure about the 9 months or the 12 months and will have to think about it."}],
     situation:"Listen carefully. This is not an objection.",
     prompt:"What is this, and what do you do?",
     tag:"This is a buying signal. Jill has decided to study. She only needs help to choose. Help her, then ask her to start.",
     options:[
-      {correct:true,warmth:+9,text:"\u201cGood question, and it sounds like you're ready to start. Your goal is those university applications, so the 12-month course is the one that takes you all the way. Shall we get you started with that one?\u201d",
+      {correct:true,warmth:+9,text:"\u201cGood question, and it sounds like you're ready to start. Your goal is those university applications, so the 12-month course is the one that takes you all the way and will make sure you are confident. I suggest we get you started with that one?\u201d",
        fb:"Perfect. You heard the buying signal. You helped her choose the right option. Then you asked her to start."},
       {correct:false,warmth:-6,text:"\u201cNo problem, take your time to think about which one you want and call me when you decide.\u201d",
-       fb:"You missed the buying signal. Jill already decided to study. Help her choose now. Do not send her home."},
+       fb:"You missed the buying signal. Jill already decided to study. Help her choose now. Do not send her home, she's ready to close."},
       {correct:false,warmth:-4,text:"\u201cThey are both fine, it really doesn't matter, just pick whichever one you like.\u201d",
-       fb:"A buying signal needs your help. Say which option reaches her goal. Then ask her to start."}
+       fb:"A buying signal needs your help. Explain which option helps her reach her goal. Then ask her to start."}
     ]}
 ];
 
