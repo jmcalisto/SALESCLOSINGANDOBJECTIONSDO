@@ -6,7 +6,7 @@
 <title>Jill's Solution &amp; Closing — Role-play</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600;700&family=Lora:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* Do-section design tokens — see the SALESDOSTYLEGUIDE repo. Components read
      these and never a raw hex, so a future reskin touches this block only. */
@@ -16,6 +16,9 @@
     --navy:#0B2A4A; --accent:#D6231C; --warm:#2E7D5B;
     --warm-soft:#E3F0EA; --cool:#C0453E; --cool-soft:#FBEAE9;
     --you:#0B2A4A; --jill:#8A3A2E;
+    /* fullscreen affordance -- its own token, not --warm, which carries the
+       warmth-meter meaning and would drift if that palette were retuned */
+    --fs-green:#127A47; --fs-green-deep:#0D5F37;
     --shadow:0 1px 2px rgba(19,38,59,.06),0 8px 24px rgba(19,38,59,.08);
     --radius:14px;
   }
@@ -49,10 +52,14 @@
   /* ---------- header / status ---------- */
   .topbar{
     background:var(--card);border-bottom:1px solid var(--line);
-    padding:14px 20px 12px;flex-shrink:0;position:relative;
+    /* 50px of top padding reserves a band for the centred fullscreen button.
+       The button is absolutely positioned and opaque, so without the band a
+       title long enough to reach the centre has its ascenders covered --
+       which happens in most languages here, not just the longest. */
+    padding:50px 20px 12px;flex-shrink:0;position:relative;
   }
   .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}
-  .title{font-family:"Fraunces",Georgia,serif;font-optical-sizing:none;font-weight:600;color:var(--navy);font-size:1.5rem;line-height:1.15;margin:0 0 12px;padding-inline-end:150px}
+  .title{font-family:"Lora",Georgia,serif;font-optical-sizing:none;font-weight:600;color:var(--navy);font-size:1.5rem;line-height:1.15;margin:0 0 12px;padding-inline-end:150px}
   .rail{display:flex;gap:6px;margin:12px 0 4px;flex-wrap:wrap}
   .step{flex:1 1 0;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.62rem;color:var(--muted);text-align:center;font-weight:600;letter-spacing:.02em}
   .dot{width:100%;height:6px;border-radius:6px;background:var(--line);transition:background .4s ease}
@@ -155,7 +162,7 @@
   /* ---------- final ---------- */
   .final{padding:4px 2px 0}
   .final .badge{width:44px;height:44px;border-radius:50%;margin:0 auto 8px;background:var(--warm-soft);color:var(--warm);display:flex;align-items:center;justify-content:center;font-size:1.4rem}
-  .final h2{font-family:"Fraunces",Georgia,serif;font-optical-sizing:none;font-weight:600;color:var(--navy);font-size:1.2rem;margin:0 0 6px;text-align:center}
+  .final h2{font-family:"Lora",Georgia,serif;font-optical-sizing:none;font-weight:600;color:var(--navy);font-size:1.2rem;margin:0 0 6px;text-align:center}
   .final .lead{color:var(--ink-soft);margin:0 auto 12px;max-width:60ch;text-align:center;font-size:.92rem}
   .recap{margin:0 0 12px}
   .recap h3{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
@@ -164,10 +171,13 @@
   .recap li::before{content:"";position:absolute;inset-inline-start:0;top:7px;width:6px;height:6px;border-radius:50%;background:var(--warm)}
   .code-box{display:block;width:max-content;margin:0 auto;padding:8px 18px;border:2px dashed var(--navy);border-radius:12px;background:#F7FAFC;text-align:center}
   .code-box .lbl{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;display:block;margin-bottom:2px}
-  .code-box .code{font-family:"Fraunces",Georgia,serif;font-optical-sizing:none;font-size:1.3rem;font-weight:600;letter-spacing:.06em;color:var(--navy)}
+  .code-box .code{font-family:"Lora",Georgia,serif;font-optical-sizing:none;font-size:1.3rem;font-weight:600;letter-spacing:.06em;color:var(--navy)}
 
   @media (max-width:560px){
     .stage{width:100vw;height:100vh;border-radius:0}
+    /* the band is reserved at every width now; just trim the button so it
+       still clears the eyebrow and the language select when narrow */
+    .fs-btn{height:30px;padding:0 12px;font-size:.72rem;gap:6px}
     .scene{height:160px}
     .title{font-size:1.25rem;padding-inline-end:0}
     .step{font-size:0;min-width:0}
@@ -179,20 +189,30 @@
   }
   @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 
-  /* Fullscreen button — Do-section ghost vocabulary, absolutely positioned so
-     it costs no vertical height inside the fixed stage. */
-  .fs-btn{position:absolute;top:12px;inset-inline-end:16px;display:inline-flex;align-items:center;gap:6px;
-    height:28px;padding:0 10px;background:transparent;color:var(--navy);
-    border:1.5px solid var(--line);border-radius:10px;
-    font:inherit;font-size:.72rem;font-weight:700;letter-spacing:.02em;
-    white-space:nowrap;cursor:pointer;transition:background .15s}
-  .fs-btn:hover{background:#EDF3F8}
+  /* Fullscreen button — centred at the top of the stage and deliberately loud.
+     In an LMS iframe the lower half of the activity often sits below the fold,
+     and a learner who never finds this button never sees that half. Solid green
+     rather than the Do-section ghost vocabulary, so it reads as the one control
+     that is chrome rather than part of the role-play. Still absolutely
+     positioned, so it costs no vertical height inside the fixed stage. */
+  .fs-btn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;
+    display:inline-flex;align-items:center;gap:8px;
+    height:34px;padding:0 16px;background:var(--fs-green);color:#fff;
+    border:0;border-radius:999px;
+    font:inherit;font-size:.78rem;font-weight:800;letter-spacing:.02em;
+    white-space:nowrap;cursor:pointer;
+    box-shadow:0 2px 10px rgba(18,122,71,.35);
+    transition:background .15s,box-shadow .15s}
+  .fs-btn:hover{background:var(--fs-green-deep);box-shadow:0 4px 14px rgba(18,122,71,.45)}
   .fs-btn:focus-visible{outline:3px solid #A9C7E8;outline-offset:2px}
-  .fs-btn.is-on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  /* while fullscreen the button has done its job — drop it back to navy so it
+     stops competing with the activity for attention */
+  .fs-btn.is-on{background:var(--navy);box-shadow:none}
 
-  /* language switcher — top-right of the header, beside the fullscreen button.
-     ?lang= stays the primary mechanism for LMS embeds. */
-  .langbar{position:absolute;top:12px;inset-inline-end:150px}
+  /* language switcher — header, top-right, in the row the fullscreen button
+     vacated when it moved to centre. ?lang= stays the primary mechanism for
+     LMS embeds. */
+  .langbar{position:absolute;top:12px;inset-inline-end:16px}
   .langbar select{font:inherit;font-size:.72rem;font-weight:700;color:var(--navy);
     background:transparent;border:1.5px solid var(--line);border-radius:10px;
     padding:5px 8px;cursor:pointer}
@@ -209,7 +229,7 @@
     font-family:'Noto Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;font-weight:700}
   [dir="rtl"] .title{padding-inline-end:0;padding-inline-start:0}
   [dir="rtl"] .eyebrow{letter-spacing:0}
-  [dir="rtl"] .langbar{inset-inline-end:150px}
+  [dir="rtl"] .langbar{inset-inline-end:16px}
 </style>
 </head>
 <body>
@@ -217,7 +237,7 @@
   <header class="topbar">
     <p class="eyebrow" id="eyebrow"></p>
     <h1 class="title" id="title"></h1>
-    <button class="fs-btn" id="fsBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span class="fs-label" aria-live="polite"></span></button>
+    <button class="fs-btn" id="fsBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span class="fs-label" aria-live="polite"></span></button>
     <div class="langbar"><select id="langsel" aria-label="Language"></select></div>
     <div class="rail" id="rail" aria-label="Conversation phases"></div>
     <div class="warmth" id="warmthWrap">
@@ -277,7 +297,7 @@ const I18N = {
 /* ---------------------------------------------------------------- English */
 en:{
   lang:"en",
-  fs:{ enter:"Fullscreen", exit:"Exit fullscreen", newtab:"Open in a new tab", hint:"Press F11 to fill your screen" },
+  fs:{ enter:"Fullscreen", exit:"Exit fullscreen", hint:"Press F11 to fill your screen" },
   eyebrow:"Solution, Closing & Objections · Practice",
   title:"Jill's appointment — you are the Consultant",
   intro:"You finished the Needs Analysis. Now show Jill the right course. Then ask her to start. If she has a doubt, treat it. You choose what to say at each step.",
@@ -401,7 +421,7 @@ en:{
 /* ---------------------------------------------------------------- Italiano */
 it:{
   lang:"it",
-  fs:{ enter:"Schermo intero", exit:"Esci da schermo intero", newtab:"Apri in una nuova scheda", hint:"Premi F11 per riempire lo schermo" },
+  fs:{ enter:"Schermo intero", exit:"Esci da schermo intero", hint:"Premi F11 per riempire lo schermo" },
   eyebrow:"Soluzione, chiusura e obiezioni · Pratica",
   title:"L'appuntamento di Jill — il Consulente sei tu",
   intro:"Hai completato l'analisi dei bisogni. Ora mostra a Jill il corso giusto. Poi chiedile di iniziare. Se ha un dubbio, trattalo. A ogni passo scegli tu cosa dire.",
@@ -524,7 +544,7 @@ it:{
 /* -------------------------------------------------------------- Português */
 pt:{
   lang:"pt",
-  fs:{ enter:"Ecrã inteiro", exit:"Sair do ecrã inteiro", newtab:"Abrir num novo separador", hint:"Prima F11 para preencher o ecrã" },
+  fs:{ enter:"Ecrã inteiro", exit:"Sair do ecrã inteiro", hint:"Prima F11 para preencher o ecrã" },
   eyebrow:"Solução, fecho e objeções · Prática",
   title:"A reunião da Jill — o Consultor é você",
   intro:"Terminou a análise de necessidades. Agora mostre à Jill o curso certo. Depois peça-lhe para começar. Se ela tiver uma dúvida, trate-a. Em cada passo é você que escolhe o que dizer.",
@@ -648,7 +668,7 @@ pt:{
 /* ---------------------------------------------------------------- Español */
 es:{
   lang:"es",
-  fs:{ enter:"Pantalla completa", exit:"Salir de pantalla completa", newtab:"Abrir en una pestaña nueva", hint:"Pulsa F11 para ocupar toda la pantalla" },
+  fs:{ enter:"Pantalla completa", exit:"Salir de pantalla completa", hint:"Pulsa F11 para ocupar toda la pantalla" },
   eyebrow:"Solución, cierre y objeciones · Práctica",
   title:"La cita de Jill — el Consultor eres tú",
   intro:"Has terminado el análisis de necesidades. Ahora muéstrale a Jill el curso adecuado. Después pídele que empiece. Si tiene una duda, trátala. En cada paso eliges tú qué decir.",
@@ -771,7 +791,7 @@ es:{
 /* --------------------------------------------------------------- Français */
 fr:{
   lang:"fr",
-  fs:{ enter:"Plein écran", exit:"Quitter le plein écran", newtab:"Ouvrir dans un nouvel onglet", hint:"Appuyez sur F11 pour remplir l'écran" },
+  fs:{ enter:"Plein écran", exit:"Quitter le plein écran", hint:"Appuyez sur F11 pour remplir l'écran" },
   eyebrow:"Solution, conclusion et objections · Pratique",
   title:"Le rendez-vous de Jill — c'est vous la Conseillère",
   intro:"Vous avez terminé l'analyse des besoins. Montrez maintenant à Jill le bon cours. Puis proposez-lui de commencer. Si elle a un doute, traitez-le. À chaque étape, c'est vous qui choisissez quoi dire.",
@@ -895,7 +915,7 @@ fr:{
 /* ----------------------------------------------------------------- العربية */
 ar:{
   lang:"ar",
-  fs:{ enter:"ملء الشاشة", exit:"إنهاء ملء الشاشة", newtab:"فتح في تبويب جديد", hint:"اضغط F11 لملء الشاشة" },
+  fs:{ enter:"ملء الشاشة", exit:"إنهاء ملء الشاشة", hint:"اضغط F11 لملء الشاشة" },
   eyebrow:"الحل والإغلاق والاعتراضات · تدريب",
   title:"موعد جيل — أنت المستشار",
   intro:"لقد أنهيت تحليل الاحتياجات. الآن اعرض على جيل الدورة المناسبة. ثم اطلب منها أن تبدأ. وإن كان لديها شك، عالجه. في كل خطوة أنت من يختار ما يقال.",
@@ -1274,21 +1294,16 @@ const SCENARIO=SHAPE.map((sh,i)=>{
   const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement || null;
   // false when the embedding iframe carries no allowfullscreen
   const fsSupported = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
-  // about:srcdoc, blob: and data: cannot be reopened as a top-level document
-  const fsCanPopOut = /^https?:$/.test(location.protocol);
-  let fsMode = fsSupported ? "fullscreen" : (fsCanPopOut ? "popout" : "hint");
+  let fsMode = fsSupported ? "fullscreen" : "hint";
   let fsHintTimer;
 
   function syncFsLabel(){
     if(!fsBtn) return;
     const on = !!fsEl();
-    const t = fsMode === "popout" ? FS.newtab : on ? FS.exit : FS.enter;
+    const t = on ? FS.exit : FS.enter;
     fsLabelEl.textContent = t; fsBtn.title = t;
     fsBtn.classList.toggle("is-on", on);
-    // aria-pressed describes a toggle; in popout mode this is a one-way action,
-    // so drop the attribute rather than lie with "false"
-    if(fsMode === "popout") fsBtn.removeAttribute("aria-pressed");
-    else fsBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    fsBtn.setAttribute("aria-pressed", on ? "true" : "false");
   }
   // there is no toast component in these activities, so the hint borrows the
   // button's own label for a few seconds
@@ -1297,7 +1312,7 @@ const SCENARIO=SHAPE.map((sh,i)=>{
     fsLabelEl.textContent = FS.hint; fsBtn.title = FS.hint;
     clearTimeout(fsHintTimer); fsHintTimer = setTimeout(syncFsLabel, 4000);
   }
-  function fsDemote(){ fsMode = fsCanPopOut ? "popout" : "hint"; syncFsLabel(); fsHint(); }
+  function fsDemote(){ fsMode = "hint"; syncFsLabel(); fsHint(); }
 
   /* Scale the stage rather than stretch it. This is a fixed 920xH design, so
      plain fullscreen on a large monitor would just centre a postage stamp in a
@@ -1310,11 +1325,6 @@ const SCENARIO=SHAPE.map((sh,i)=>{
 
   function toggleFullscreen(){
     if(fsMode === "hint"){ fsHint(); return; }
-    if(fsMode === "popout"){
-      // returns null when the iframe is sandboxed without allow-popups
-      if(!window.open(location.href, "_blank", "noopener")){ fsMode = "hint"; fsDemote(); }
-      return;
-    }
     if(fsEl()){ (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
     /* documentElement, NOT .stage: element fullscreen forces width/height:100%
        over the fixed design and paints an opaque black ::backdrop, which would
