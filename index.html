@@ -45,39 +45,24 @@
     position:relative;
     transform:scale(var(--fs-scale,1));transform-origin:center center;
   }
-  .stage.finished .scene,
-  .stage.finished .rail,
-  .stage.finished .warmth{display:none}
+  .stage.finished .scene{display:none}
 
   /* ---------- header / status ---------- */
+  /* One row: title, fullscreen, language. The button used to be absolutely
+     positioned and centred, which needed a 50px reserved band so it did not
+     cover the title's ascenders. As a flex sibling it cannot overlap, so the
+     band is gone and the header costs ~48px instead of ~150px. */
   .topbar{
     background:var(--card);border-bottom:1px solid var(--line);
-    /* 50px of top padding reserves a band for the centred fullscreen button.
-       The button is absolutely positioned and opaque, so without the band a
-       title long enough to reach the centre has its ascenders covered --
-       which happens in most languages here, not just the longest. */
-    padding:50px 20px 12px;flex-shrink:0;position:relative;
+    padding:8px 14px;flex-shrink:0;
+    display:flex;align-items:center;gap:10px;
   }
-  .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}
-  .title{font-family:"Lora",Georgia,serif;font-optical-sizing:none;font-weight:600;color:var(--navy);font-size:1.5rem;line-height:1.15;margin:0 0 12px;padding-inline-end:150px}
-  .rail{display:flex;gap:6px;margin:12px 0 4px;flex-wrap:wrap}
-  .step{flex:1 1 0;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.62rem;color:var(--muted);text-align:center;font-weight:600;letter-spacing:.02em}
-  .dot{width:100%;height:6px;border-radius:6px;background:var(--line);transition:background .4s ease}
-  .step.done .dot{background:var(--warm)}
-  .step.active .dot{background:var(--accent)}
-  .step.active{color:var(--navy)} .step.done{color:var(--ink-soft)}
-  .warmth{display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
-  .warmth-avatar{width:40px;height:40px;border-radius:50%;flex:0 0 auto;background:var(--warm-soft);color:var(--warm);display:flex;align-items:center;justify-content:center;font-weight:700;transition:background .4s,color .4s}
-  .warmth-body{flex:1 1 auto;min-width:0}
-  .warmth-label{display:flex;justify-content:space-between;align-items:baseline;font-size:.75rem;color:var(--ink-soft);font-weight:600;margin-bottom:5px}
-  .warmth-state{color:var(--warm);transition:color .4s;font-variant-numeric:tabular-nums}
-  .warmth-track{height:8px;border-radius:8px;background:var(--line);overflow:hidden}
-  .warmth-fill{height:100%;width:55%;border-radius:8px;background:var(--warm);transition:width .5s ease,background .4s ease}
-  .cooling .warmth-avatar{background:var(--cool-soft);color:var(--cool)}
-  .cooling .warmth-fill{background:var(--cool)} .cooling .warmth-state{color:var(--cool)}
+  .title{font-family:"Lora",Georgia,serif;font-weight:600;color:var(--navy);
+    font-size:1.05rem;line-height:1.3;margin:0;flex:1 1 auto;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
   /* ---------- photo scene ---------- */
-  .scene{position:relative;width:100%;overflow:hidden;background:#22303c;flex-shrink:0;height:200px}
+  .scene{position:relative;width:100%;overflow:hidden;background:#22303c;flex-shrink:0;height:280px}
   .scene-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%;display:block}
   .scene::after{
     content:"";position:absolute;inset:0;pointer-events:none;
@@ -172,12 +157,11 @@
 
   @media (max-width:560px){
     .stage{width:100vw;height:100vh;border-radius:0}
-    /* the band is reserved at every width now; just trim the button so it
-       still clears the eyebrow and the language select when narrow */
+    /* the row is tight at this width, so trim the button to keep the
+       title, the button and the language select on one line */
     .fs-btn{height:30px;padding:0 12px;font-size:.72rem;gap:6px}
-    .scene{height:160px}
-    .title{font-size:1.25rem;padding-inline-end:0}
-    .step{font-size:0;min-width:0}
+    .scene{height:200px}
+    .title{font-size:.95rem}
     .bubble{max-width:66%;padding:7px 10px 8px}
     .bubble .say{font-size:.76rem}
     .bubble.jill{top:2%;left:2%}
@@ -192,7 +176,7 @@
      rather than the Do-section ghost vocabulary, so it reads as the one control
      that is chrome rather than part of the role-play. Still absolutely
      positioned, so it costs no vertical height inside the fixed stage. */
-  .fs-btn{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:30;
+  .fs-btn{flex:0 0 auto;
     display:inline-flex;align-items:center;gap:8px;
     height:34px;padding:0 16px;background:var(--fs-green);color:#fff;
     border:0;border-radius:999px;
@@ -209,7 +193,7 @@
   /* language switcher — header, top-right, in the row the fullscreen button
      vacated when it moved to centre. ?lang= stays the primary mechanism for
      LMS embeds. */
-  .langbar{position:absolute;top:12px;inset-inline-end:16px}
+  .langbar{flex:0 0 auto}
   .langbar select{font:inherit;font-size:.72rem;font-weight:700;color:var(--navy);
     background:transparent;border:1.5px solid var(--line);border-radius:10px;
     padding:5px 8px;cursor:pointer}
@@ -225,25 +209,15 @@
   [dir="rtl"] .title,[dir="rtl"] .final h2,[dir="rtl"] .code-box .code{
     font-family:'Noto Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;font-weight:700}
   [dir="rtl"] .title{padding-inline-end:0;padding-inline-start:0}
-  [dir="rtl"] .eyebrow{letter-spacing:0}
   [dir="rtl"] .langbar{inset-inline-end:16px}
 </style>
 </head>
 <body>
 <div class="stage">
   <header class="topbar">
-    <p class="eyebrow" id="eyebrow"></p>
     <h1 class="title" id="title"></h1>
     <button class="fs-btn" id="fsBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg><span class="fs-label" aria-live="polite"></span></button>
     <div class="langbar"><select id="langsel" aria-label="Language"></select></div>
-    <div class="rail" id="rail" aria-label="Conversation phases"></div>
-    <div class="warmth" id="warmthWrap">
-      <div class="warmth-avatar" id="warmthAvatar">J</div>
-      <div class="warmth-body">
-        <div class="warmth-label"><span id="warmthName"></span><span class="warmth-state" id="warmthState"></span></div>
-        <div class="warmth-track" aria-hidden="true"><div class="warmth-fill" id="warmthFill"></div></div>
-      </div>
-    </div>
   </header>
 
   <div class="scene" id="scene">
@@ -295,12 +269,11 @@ const I18N = {
 en:{
   lang:"en",
   fs:{ enter:"Fullscreen", exit:"Exit fullscreen", hint:"Press F11 to fill your screen" },
-  eyebrow:"Solution, Closing & Objections · Practice",
   title:"Jill's appointment — you are the Consultant",
   intro:"You finished the Needs Analysis. Now show Jill the right course. Then ask her to start. If she has a doubt, treat it. You choose what to say at each step.",
   persona:"<b>Jill · College student · 23</b><br><b>Her goal:</b> to study at a top university in the United States<br><b>Her level now:</b> 6. She wants to speak and write with confidence.<br><b>Her time:</b> she can study 2 or 3 times a week<br><b>Her hot button:</b> she failed two exams. She feels upset and has lost hope.<br><b>Her options:</b> Full-Access. A: 9 months. B: 12 months.<br><b>Note:</b> she lives far from the Center. She comes into the city often.",
   setupHeading:"Before you start", startBtn:"Start the appointment ▸",
-  warmthName:"Trust & warmth", you:"You", jill:"Jill",
+you:"You", jill:"Jill",
   correctTag:"✓ Good move", rethinkTag:"Let's rethink that",
   continue:"Continue", tryAgain:"Try another response",
   finishBtn:"See your results ▸", restartBtn:"Try again",
@@ -409,12 +382,11 @@ en:{
 it:{
   lang:"it",
   fs:{ enter:"Schermo intero", exit:"Esci da schermo intero", hint:"Premi F11 per riempire lo schermo" },
-  eyebrow:"Soluzione, chiusura e obiezioni · Pratica",
   title:"L'appuntamento di Jill — il Consulente sei tu",
   intro:"Hai completato l'analisi dei bisogni. Ora mostra a Jill il corso giusto. Poi chiedile di iniziare. Se ha un dubbio, trattalo. A ogni passo scegli tu cosa dire.",
   persona:"<b>Jill · Studentessa universitaria · 23 anni</b><br><b>Il suo obiettivo:</b> studiare in una grande università negli Stati Uniti<br><b>Il suo livello attuale:</b> 6. Vuole parlare e scrivere con sicurezza.<br><b>Il suo tempo:</b> può studiare 2 o 3 volte a settimana<br><b>Il suo punto sensibile:</b> ha fallito due esami. È delusa e ha perso fiducia.<br><b>Le sue opzioni:</b> Full-Access. A: 9 mesi. B: 12 mesi.<br><b>Nota:</b> vive lontano dal Centro. Viene spesso in città.",
   setupHeading:"Prima di iniziare", startBtn:"Inizia l'appuntamento ▸",
-  warmthName:"Fiducia e sintonia", you:"Tu", jill:"Jill",
+you:"Tu", jill:"Jill",
   correctTag:"✓ Bella mossa", rethinkTag:"Ripensiamoci",
   continue:"Continua", tryAgain:"Prova un'altra risposta",
   finishBtn:"Vedi i risultati ▸", restartBtn:"Riprova",
@@ -522,12 +494,11 @@ it:{
 pt:{
   lang:"pt",
   fs:{ enter:"Ecrã inteiro", exit:"Sair do ecrã inteiro", hint:"Prima F11 para preencher o ecrã" },
-  eyebrow:"Solução, fecho e objeções · Prática",
   title:"A reunião da Jill — o Consultor é você",
   intro:"Terminou a análise de necessidades. Agora mostre à Jill o curso certo. Depois peça-lhe para começar. Se ela tiver uma dúvida, trate-a. Em cada passo é você que escolhe o que dizer.",
   persona:"<b>Jill · Estudante universitária · 23 anos</b><br><b>O objetivo dela:</b> estudar numa grande universidade nos Estados Unidos<br><b>O nível dela agora:</b> 6. Quer falar e escrever com confiança.<br><b>O tempo dela:</b> pode estudar 2 ou 3 vezes por semana<br><b>O ponto sensível dela:</b> chumbou em dois exames. Está desanimada e perdeu a esperança.<br><b>As opções dela:</b> Full-Access. A: 9 meses. B: 12 meses.<br><b>Nota:</b> vive longe do Centro. Vem à cidade com frequência.",
   setupHeading:"Antes de começar", startBtn:"Começar a reunião ▸",
-  warmthName:"Confiança e ligação", you:"Você", jill:"Jill",
+you:"Você", jill:"Jill",
   correctTag:"✓ Boa jogada", rethinkTag:"Vamos repensar",
   continue:"Continuar", tryAgain:"Tentar outra resposta",
   finishBtn:"Ver os resultados ▸", restartBtn:"Tentar de novo",
@@ -636,12 +607,11 @@ pt:{
 es:{
   lang:"es",
   fs:{ enter:"Pantalla completa", exit:"Salir de pantalla completa", hint:"Pulsa F11 para ocupar toda la pantalla" },
-  eyebrow:"Solución, cierre y objeciones · Práctica",
   title:"La cita de Jill — el Consultor eres tú",
   intro:"Has terminado el análisis de necesidades. Ahora muéstrale a Jill el curso adecuado. Después pídele que empiece. Si tiene una duda, trátala. En cada paso eliges tú qué decir.",
   persona:"<b>Jill · Estudiante universitaria · 23 años</b><br><b>Su objetivo:</b> estudiar en una gran universidad de Estados Unidos<br><b>Su nivel ahora:</b> 6. Quiere hablar y escribir con confianza.<br><b>Su tiempo:</b> puede estudiar 2 o 3 veces por semana<br><b>Su punto sensible:</b> suspendió dos exámenes. Está desanimada y ha perdido la esperanza.<br><b>Sus opciones:</b> Full-Access. A: 9 meses. B: 12 meses.<br><b>Nota:</b> vive lejos del Centro. Viene a la ciudad a menudo.",
   setupHeading:"Antes de empezar", startBtn:"Empezar la cita ▸",
-  warmthName:"Confianza y sintonía", you:"Tú", jill:"Jill",
+you:"Tú", jill:"Jill",
   correctTag:"✓ Buena jugada", rethinkTag:"Repensémoslo",
   continue:"Continuar", tryAgain:"Prueba otra respuesta",
   finishBtn:"Ver tus resultados ▸", restartBtn:"Intentar otra vez",
@@ -749,12 +719,11 @@ es:{
 fr:{
   lang:"fr",
   fs:{ enter:"Plein écran", exit:"Quitter le plein écran", hint:"Appuyez sur F11 pour remplir l'écran" },
-  eyebrow:"Solution, conclusion et objections · Pratique",
   title:"Le rendez-vous de Jill — c'est vous la Conseillère",
   intro:"Vous avez terminé l'analyse des besoins. Montrez maintenant à Jill le bon cours. Puis proposez-lui de commencer. Si elle a un doute, traitez-le. À chaque étape, c'est vous qui choisissez quoi dire.",
   persona:"<b>Jill · Étudiante · 23 ans</b><br><b>Son objectif :</b> étudier dans une grande université aux États-Unis<br><b>Son niveau actuel :</b> 6. Elle veut parler et écrire avec assurance.<br><b>Son temps :</b> elle peut étudier 2 ou 3 fois par semaine<br><b>Son point sensible :</b> elle a échoué à deux examens. Elle est déçue et a perdu espoir.<br><b>Ses options :</b> Full-Access. A : 9 mois. B : 12 mois.<br><b>Remarque :</b> elle habite loin du Centre. Elle vient souvent en ville.",
   setupHeading:"Avant de commencer", startBtn:"Commencer le rendez-vous ▸",
-  warmthName:"Confiance et lien", you:"Vous", jill:"Jill",
+you:"Vous", jill:"Jill",
   correctTag:"✓ Bien joué", rethinkTag:"Reprenons cela",
   continue:"Continuer", tryAgain:"Essayer une autre réponse",
   finishBtn:"Voir vos résultats ▸", restartBtn:"Réessayer",
@@ -863,12 +832,11 @@ fr:{
 ar:{
   lang:"ar",
   fs:{ enter:"ملء الشاشة", exit:"إنهاء ملء الشاشة", hint:"اضغط F11 لملء الشاشة" },
-  eyebrow:"الحل والإغلاق والاعتراضات · تدريب",
   title:"موعد جيل — أنت المستشار",
   intro:"لقد أنهيت تحليل الاحتياجات. الآن اعرض على جيل الدورة المناسبة. ثم اطلب منها أن تبدأ. وإن كان لديها شك، عالجه. في كل خطوة أنت من يختار ما يقال.",
   persona:"<b>جيل · طالبة جامعية · ٢٣ سنة</b><br><b>هدفها:</b> الدراسة في جامعة مرموقة في الولايات المتحدة<br><b>مستواها الآن:</b> ٦. تريد أن تتحدث وتكتب بثقة.<br><b>وقتها:</b> تستطيع الدراسة مرتين أو ثلاث مرات أسبوعيًا<br><b>نقطتها الحساسة:</b> رسبت في اختبارين. تشعر بالإحباط وفقدت الأمل.<br><b>خياراتها:</b> Full-Access. أ: ٩ أشهر. ب: ١٢ شهرًا.<br><b>ملاحظة:</b> تسكن بعيدًا عن المركز، لكنها تأتي إلى المدينة كثيرًا.",
   setupHeading:"قبل أن تبدأ", startBtn:"ابدأ الموعد ◂",
-  warmthName:"الثقة والتقارب", you:"أنت", jill:"جيل",
+you:"أنت", jill:"جيل",
   correctTag:"✓ خطوة موفّقة", rethinkTag:"لنعد التفكير",
   continue:"متابعة", tryAgain:"جرّب إجابة أخرى",
   finishBtn:"اعرض نتائجك ◂", restartBtn:"حاول مرة أخرى",
@@ -1010,13 +978,6 @@ const SCENARIO=SHAPE.map((sh,i)=>{
     })
   };
 });
-/* Several steps share one rail dot (phase 5, the Three Magic Steps, spans
-   three). Without a sub-counter the rail looks stalled for three picks. Digits
-   need no translation, so this stays out of the language blocks. */
-const PHASE_TOTAL = SCENARIO.reduce((m,s)=>{ m[s.phase]=(m[s.phase]||0)+1; return m; },{});
-const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
-  seen[s.phase]=(seen[s.phase]||0)+1; return seen[s.phase]; }); })();
-
 /* ===== engine =====
    Generic over UI + SCENARIO above — never hardcode copy down here.
 
@@ -1039,23 +1000,14 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
   const $ = id => document.getElementById(id);
   const interaction = $("interaction");
   const bJill = $("bubbleJill"), bYou = $("bubbleYou");
-  const PHASE_COUNT = UI.steps.length;
+  const stage = document.querySelector(".stage");
 
   let idx = 0, warmth = 55, resolved = false;
 
-  $("eyebrow").textContent   = UI.eyebrow;
   $("title").textContent     = UI.title;
-  $("warmthName").textContent= UI.warmthName;
-  $("warmthAvatar").textContent = UI.jill.charAt(0);
   $("jillSp").textContent    = UI.jill;
   $("youSp").textContent     = UI.you;
 
-  const rail = $("rail");
-  UI.steps.forEach((label,i)=>{
-    const s=document.createElement("div"); s.className="step"; s.id="step-"+i;
-    s.innerHTML='<span class="dot"></span><span></span>';
-    s.lastChild.textContent=label; rail.appendChild(s);
-  });
 
   /* `audio` holds an id such as "j0" until someone wires real clips, so only
      play it once it looks like a path. Auto-playing a bare id just 404s. */
@@ -1075,34 +1027,15 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
   function dim(side){ (side==="jill"?bJill:bYou).classList.add("dim"); }
   function clearBubbles(){ setBubble("jill",null); setBubble("you",null); }
 
-  function paintRail(active){
-    UI.steps.forEach((_,i)=>{
-      const s=$("step-"+i); s.classList.remove("done","active");
-      if(i<active) s.classList.add("done"); else if(i===active) s.classList.add("active");
-    });
-  }
-  /* Show "n/m" on the active dot wherever several steps share it, so progress
-     never appears stalled. Every other label is reset to its plain form. */
-  function labelRail(active){
-    UI.steps.forEach((label,i)=>{
-      const s=$("step-"+i); if(!s) return;
-      s.lastChild.textContent =
-        (i===active && PHASE_TOTAL[i]>1) ? label+" "+PHASE_POS[idx]+"/"+PHASE_TOTAL[i] : label;
-    });
-  }
-  function band(){ return warmth>=75?"high":warmth>=50?"mid":warmth>=30?"low":"cold"; }
-  function renderWarmth(){
-    const w=Math.max(0,Math.min(100,warmth));
-    $("warmthFill").style.width = Math.max(6,w)+"%";
-    $("warmthState").textContent = w+"%";
-    const bd=band();
-    $("warmthWrap").classList.toggle("cooling", bd==="low"||bd==="cold");
-  }
+  /* The meter is gone from the UI, but the score is still tracked: SHAPE
+     carries the deltas, the retry path has to roll them back exactly, and a
+     future build may want to show it again. Mirrored to a data attribute so
+     it stays inspectable and testable without rendering anything. */
+  function syncWarmth(){ stage.dataset.warmth = Math.max(0,Math.min(100,warmth)); }
 
   function renderSetup(){
     clearBubbles();
     $("sceneNote").textContent = "";
-    paintRail(-1);
     interaction.innerHTML =
       '<p class="prompt-q">'+UI.setupHeading+'</p>'+
       '<p class="setup-body">'+UI.persona+'</p>'+
@@ -1128,8 +1061,6 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
   function renderStep(){
     resolved=false;
     const step=SCENARIO[idx];
-    paintRail(step.phase);
-    labelRail(step.phase);
     clearBubbles();
     /* The situation goes on the photo, not in the panel. It is the one piece
        of chrome that costs no panel height, and the panel budget is three
@@ -1163,7 +1094,7 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
     dim("jill");
     setBubble("you", opt.say || opt.text);
 
-    warmth += (opt.warmth||0); renderWarmth();
+    warmth += (opt.warmth||0); syncWarmth();
 
     Array.from(list.children).forEach(c=>{ c.disabled=true; if(c!==button) c.classList.add("other-hidden"); });
     button.classList.add(opt.correct?"picked-good":"picked-bad");
@@ -1190,7 +1121,7 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
       r.textContent=UI.tryAgain;
       r.addEventListener("click",()=>{
         v.remove(); actions.remove();
-        warmth -= (opt.warmth||0); renderWarmth();
+        warmth -= (opt.warmth||0); syncWarmth();
         setBubble("you",null);
         const op=openingLine(step);
         setBubble("jill", op?op.text:null);
@@ -1208,8 +1139,7 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
   }
 
   function finish(){
-    paintRail(PHASE_COUNT);
-    warmth=Math.max(warmth,80); renderWarmth();
+    warmth=Math.max(warmth,80); syncWarmth();
     clearBubbles(); $("sceneNote").textContent="";
     document.querySelector(".stage").classList.add("finished");
 
@@ -1231,7 +1161,7 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
     r.addEventListener("click",()=>{
       idx=0; warmth=55; resolved=false;
       document.querySelector(".stage").classList.remove("finished");
-      renderWarmth(); renderSetup();
+      syncWarmth(); renderSetup();
     });
     a.appendChild(r); interaction.querySelector(".final").appendChild(a);
   }
@@ -1321,7 +1251,7 @@ const PHASE_POS = (()=>{ const seen={}; return SCENARIO.map(s=>{
     });
   })();
   document.documentElement.lang = UI.lang || "en";
-  renderWarmth(); renderSetup();
+  syncWarmth(); renderSetup();
 })();
 </script>
 </body>
