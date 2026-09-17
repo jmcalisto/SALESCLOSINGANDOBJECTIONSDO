@@ -27,8 +27,12 @@ The seven phases follow the closing sequence taught in the module:
 Everything a learner sees lives in two JavaScript objects near the top of the `<script>` block:
 
 - `UI` — interface labels, phase names, buttons, and the recap bullets
-- `SCENARIO` — the conversation itself, as an ordered array of phases, each with its lines,
-  situation text, prompt, teaching tag, and multiple-choice options with feedback
+- `SCENARIO` — the conversation itself, as an ordered array of steps, each with its lines,
+  situation text, prompt, and multiple-choice options with feedback
+
+The situation text renders into the `.scene-note` pill over the photo, not into the interaction
+panel — the panel budget is three blocks (prompt, choices, verdict). The teaching points live on
+the recap screen. See "How content fits" in the Do-section style guide before adding anything.
 
 To produce a new language version, translate the string values inside these two objects and
 re-host the file. Nothing else needs to change.
@@ -40,7 +44,7 @@ audio unwired keeps the activity text-only.
 ## Design system
 
 This activity follows the shared "Do section" visual/interaction style used across Wall Street
-English sales training activities (see the companion style-guide repo for the full design
-tokens, component inventory, and a blank template for building new activities in the same
-style). It is the direct counterpart to the "Show section" comic in the
+English sales training activities — see `_ref-SALESDOSTYLEGUIDE` for the full design tokens,
+component inventory, the panel budget, and a blank template for building new activities in the
+same style. It is the direct counterpart to the "Show section" comic in the
 `SALESCLOSINGANDOBJECTIONSSHOW` repo.
